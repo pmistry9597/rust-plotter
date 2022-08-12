@@ -1,6 +1,6 @@
 # Rustilloscope
 
-An app intended for waveform and music analysis and visualization. Powered by [Tauri](https://github.com/tauri-apps) (in Rust + JS).
+An app intended for waveform and music analysis and visualization. Powered by [Tauri](https://github.com/tauri-apps) (in Rust + JS). JS UI uses React with [@react-three/fiber](https://github.com/pmndrs/react-three-fiber).
 
 ## Build / Running
 
