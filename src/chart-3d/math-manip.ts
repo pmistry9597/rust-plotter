@@ -1,4 +1,4 @@
-import { Vec3Fixed } from "../model/three-helpers"
+import { Vec2Fixed, Vec3Fixed } from "../model/three-helpers"
 
 export interface CylProp {
     len: number,
@@ -11,7 +11,7 @@ export interface SegProp {
     ptPos: Vec3Fixed,
 }
 
-export function seg_prop_gen(xy0: [number, number], xy1: [number, number], scale: [number, number]) {
+export function seg_prop_gen(xy0: Vec2Fixed, xy1: Vec2Fixed | undefined, scale: Vec2Fixed) {
     const [x_raw, y_raw] = xy0
     const [xscale, yscale] = scale
 

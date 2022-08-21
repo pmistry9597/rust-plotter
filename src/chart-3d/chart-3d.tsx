@@ -1,27 +1,39 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from 'three';
-import { Vec3Fixed } from "../model/three-helpers";
+import { Vec2Fixed, Vec3Fixed } from "../model/three-helpers";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
-import { seg_prop_gen } from "./math-manip";
+import { seg_prop_gen, SegProp } from "./math-manip";
 
 export function Chart3d() {
+    const end = 40
+    const [xyPtsCurr, setxyPts] = useState<Vec2Fixed[]>([])
+    const [camRef, setCamRef] = useState<React.MutableRefObject<THREE.PerspectiveCamera | null> | null>(null)
+
+    const setCamRefHandle = useMemo(() => {
+        return (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => setCamRef(camRef)
+    }, [])
+
+    const scale: [number, number] = [1.0, 1.0]
+
     return (
         <>
             <Canvas dpr={[2,1]}>
-                <CamControl />
+                <TimedStream scale={scale} camRef={camRef} xyPtsCurr={xyPtsCurr} setxyPts={setxyPts} end={end} />
+                <CamControl setCamRef={setCamRefHandle} />
                 <AxesElem 
-                    len={5} 
-                    diam={0.1} 
+                    ranges={[[-4,end],[-4,4],[-4,4]]} 
+                    rad={0.1} 
                     arrowDim={{wd: 0.2, hght: 0.4}} 
                 />
                 <Scaler scaling={[1,1,1]}>
-                    <BasicFunc ptDiam={0.1} lineDiam={0.04} scale={[0.7, 1.0]} />
+                    <BasicFunc xyPtsCurr={xyPtsCurr} ptRad={0.1} lineRad={0.04} scale={scale}
+                        end={end} />
                 </Scaler>
                 <EffectComposer>
                     <Bloom
-                        intensity={7}
+                        intensity={1}
                         luminanceThreshold={0}
                         luminanceSmoothing={0.6}
                     />
@@ -31,45 +43,80 @@ export function Chart3d() {
     )
 }
 
-function CamControl() {
-    const [doneSet, setDone] = useState(false)
-    const [quat, setQuat] = useState(new THREE.Quaternion())
+function TimedStream(props: {scale: [number, number], camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null, xyPtsCurr: Vec2Fixed[], setxyPts: any, end: number}) {
+    const { xyPtsCurr, setxyPts, camRef } = props
+    const [xscale, yscale] = props.scale
 
+    const [trigger, setTrigger] = useState(false)
+    const [timer, setTimer] = useState(0)
+    const [camTimer, setCamTimer] = useState(0)
+    const [camDate, setCamDate] = useState(false)
+
+    // below are timed shits
+    useFrame((_state, delta) => {
+        setTimer(timer + delta)
+        setCamTimer(camTimer + delta)
+        if (camTimer > 0.01) {
+            setCamDate(!camDate)
+            setCamTimer(0)
+        }
+        if (timer > 0.01) {
+            setTrigger(true)
+            setTimer(0)
+        }
+    })
     useEffect(() => {
-        quat.setFromUnitVectors(new THREE.Vector3(0,0,1), 
-            (new THREE.Vector3(1,0,1))
-            .normalize())
-        const upRot = (new THREE.Quaternion())
-            .setFromUnitVectors(
-                (new THREE.Vector3(1,0,1)).normalize(), 
-                (new THREE.Vector3(1,1,1)).normalize()
-            )
-        setQuat(upRot.multiply(quat))
-        setDone(true)
-    }, [])
-    useFrame((state, delta) => {
-        if (!doneSet) {
+        if (!trigger) {
             return
         }
-        const axis = new THREE.Vector3(0.2,1,0.2).normalize()
-        const mainRot = new THREE.Quaternion().setFromAxisAngle(axis, Math.PI * 0.1 * delta)
-        setQuat(mainRot.multiply(quat))
-    })
+        const pts = genPoints(props.end)
+        const subthing = pts.slice(0, xyPtsCurr.length + 1)
+        setxyPts(subthing)
 
-    return (
-        <group quaternion={quat}>
-            <PerspectiveCamera
-                up={[0,1,0]}
-                position={[0,0,13]}
-                makeDefault
-            />
-        </group>
-    )
+        setTrigger(false)
+    }, [trigger])
+
+    // precursor to camera tracking routine
+    const [currCam, setCamCurr] = useState([0,0,0])
+    const displaceAlpha = 0.4
+    const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
+    useFrame((_state, delta) => {
+        const CAM_DISPLACE = new THREE.Vector3(10,10,10)
+
+        // implement exponential differential equation (likely linear diff equation) with damping
+        // so camera will try to catch up to points rapidly
+        const dimMap = [xscale, yscale]
+        const recentFuncPtScaled = xyPtsCurr.at(-1)?.map((val, i) => val * dimMap[i]) as Vec2Fixed || [0,0] as Vec2Fixed
+        const idealCam = (new THREE.Vector3(recentFuncPtScaled[0], 0, 0)).add(CAM_DISPLACE)
+        console.log('idealCam huh?', idealCam)
+        const camVec = new THREE.Vector3(...currCam)
+        const diff2Ideal = idealCam.sub(camVec)
+        console.log('diff2ideal eh?:', diff2Ideal)
+        console.log('diff2ideal same as ideal?', diff2Ideal.equals(camVec))
+
+        const displace = diff2Ideal.multiplyScalar(Math.pow(0.9, delta * 100))
+        setDisplaceAvg(displace.multiplyScalar(displaceAlpha).add(displaceAvg.multiplyScalar(1 - displaceAlpha)))
+        const [camX, camY, camZ] = currCam
+        const newCamPt: Vec3Fixed = [camX + displaceAvg.x, camY + displaceAvg.y, camZ + displaceAvg.z]
+        setCamCurr(newCamPt)
+    })
+    useEffect(() => {
+        camRef?.current?.position.setX(currCam[0])
+        camRef?.current?.position.setY(currCam[1])
+        camRef?.current?.position.setZ(currCam[2])
+        const dimMap = [xscale, yscale]
+        const recentFuncPtScaled = xyPtsCurr.at(-1)?.map((val, i) => val * dimMap[i]) as Vec2Fixed || [0,0] as Vec2Fixed
+        camRef?.current?.lookAt(recentFuncPtScaled[0],0,0)
+        setCamDate(false)
+    }, [camDate])
+
+    return <></>
 }
 
-function genPoints() {
-    const range = [0, 10]
-    const size = 30
+function genPoints(end: number) {
+    const range = [0, end]
+    const rate = 15
+    const size = 5 * rate
     const interv = (range[1] - range[0]) / size
     const xPre: number[] = [...Array<number>(size)].map((_, i) => {
         return i * interv
@@ -81,45 +128,95 @@ function genPoints() {
     }) as [number, number][]
 }
 
-function BasicFunc(props: {ptDiam: number, lineDiam: number, scale: [number, number]}) {
-    const plotData = useMemo(() => {
-        const xypts = genPoints()
+function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
+    const camR: React.MutableRefObject<THREE.PerspectiveCamera | null> = useRef(null)
 
-        return xypts
-                    .map((xy, i) => {
+    // useEffect(() => {
+    //     camR.current?.position.set(...props.pt)
+    // }, [props.pt, props.updateFlag])
+
+    useEffect(() => {
+        if (!camR.current) {
+            return
+        }
+
+        camR.current?.lookAt(new THREE.Vector3(0,0,0))
+        props.setCamRef(camR)
+    }, [camR])
+
+    return (
+        <PerspectiveCamera
+            up={[0,1,0]}
+            ref={camR}
+            makeDefault
+        />
+    )
+}
+
+function BasicFunc(props: {xyPtsCurr: Vec2Fixed[], ptRad: number, lineRad: number, scale: Vec2Fixed, end:number}) {
+    const [oldData, setOldData] = useState([] as Vec2Fixed[])
+    const [entities, setEntities] = useState([] as JSX.Element[])
+    useEffect(() => {
+        const xypts = props.xyPtsCurr
+
+        const tobeUpdated = xypts
+        .map((xy, i) => {
             const xyfut = xypts[i + 1]
-            const segProps = seg_prop_gen(xy, xyfut, props.scale)
-            const cylProps = segProps.cyl
-            
-            const bodySeg = !!cylProps ?
+            return [xy, xyfut, i] as [Vec2Fixed, Vec2Fixed | undefined, number]
+        })
+        .filter(([xy, _dataIndex], i) => {
+            const xyfut = xypts[i + 1]
+            const oldDat = oldData[i]
+            const xyold = oldDat
+            const oldDatFut = oldData[i + 1]
+            const xyfutold = oldDatFut
+
+            return (xy !== xyold) || (xyfut !== xyfutold)
+        })
+
+        const newEntities = tobeUpdated.map(([xy, xyfut, dataIndex], _i) => {
+            const segProp = seg_prop_gen(xy, xyfut, props.scale)
+            const cylProp = segProp.cyl
+
+            const bodySeg = !!cylProp ?
             (
-                <group position={cylProps.pos} key={i}>
-                    <mesh rotation={new THREE.Euler(0, 0, cylProps.slopeAngle)} castShadow>
+                <group position={cylProp.pos} key={dataIndex}>
+                    <mesh rotation={new THREE.Euler(0, 0, cylProp.slopeAngle)} castShadow>
                         <cylinderBufferGeometry 
-                            args={[props.lineDiam, props.lineDiam, cylProps.len ,16]} />
+                            args={[props.lineRad, props.lineRad, cylProp.len ,16]} />
                         <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
                     </mesh>
                 </group>
             ) : null
 
-            return (
-                <group position={[0,0,0]} key={i}>
+            const newEntry = (
+                <group position={[0,0,0]} key={dataIndex}>
                     {bodySeg}
-                    <mesh position={segProps.ptPos}>
-                        <sphereGeometry args={[props.ptDiam, 32,32,32]} />
+                    <mesh position={segProp.ptPos}>
+                        <sphereGeometry args={[props.ptRad, 32,32,32]} />
                         <meshBasicMaterial color="rgb(210,100,120)"></meshBasicMaterial>
                     </mesh>
                 </group>
             )
+
+            return [newEntry, dataIndex] as [JSX.Element, number]
         })
-    }, [])
+
+        newEntities.forEach(([newEntry, dataIndex]) => {
+            if (dataIndex < entities.length) {
+                entities[dataIndex] = newEntry
+            } else {
+                entities.push(newEntry)
+            }
+        })
+        setEntities(entities)
+        setOldData(xypts)
+    }, [props.xyPtsCurr])
 
     return (
-        <>
-            <group castShadow>
-                {plotData}
-            </group>
-        </>
+        <group>
+            {entities}
+        </group>
     )
 }
 
@@ -141,10 +238,10 @@ function Tip(props: {wd: number, hght: number, rotation: Vec3Fixed}) {
     )
 }
 
-function AxisLine(props: {len: number, rot: Vec3Fixed, diam: number, arrowDim: {wd: number, hght: number}}) {
+function AxisLine(props: {len: number, rad: number, arrowDim: {wd: number, hght: number}}) {
     const body =( 
         <mesh position={[0,0,0]}>
-            <cylinderGeometry args={[props.diam, props.diam, props.len, 32]} />
+            <cylinderGeometry args={[props.rad, props.rad, props.len, 32]} />
             <meshBasicMaterial color="rgb(150,0,150)" />
         </mesh>
     )
@@ -168,28 +265,37 @@ function AxisLine(props: {len: number, rot: Vec3Fixed, diam: number, arrowDim: {
     })
 
     return (
-        <group rotation={props.rot}>
+        <group>
             {body}
             {tips}
         </group>
     )
 }
 
-function AxesElem(props: {len: number, diam: number, arrowDim: {wd: number, hght: number}}) {
+function AxesElem(props: {ranges: [Vec2Fixed, Vec2Fixed, Vec2Fixed], 
+                    rad: number, arrowDim: {wd: number, hght: number}}) {
     const axesParams: {key: string, rot: Vec3Fixed}[] =
         [ 
-            {key: 'x', rot: [0,0,0.5 * Math.PI]},
+            // assuming body starts from parallel to y axis
+            {key: 'x', rot: [0,0,-0.5 * Math.PI]},
             {key: 'y', rot: [0,0,0]},
             {key: 'z', rot: [0.5 * Math.PI,0,0]},
         ]
     const axes = axesParams.map((param, i) => {
-        return <AxisLine 
-                    key={i}
-                    len={props.len} 
-                    rot={param.rot} 
-                    diam={props.diam} 
+        const [beg, end] = props.ranges[i]
+        const len = end - beg
+        const axis_displace = beg + len * 0.5
+        const pos: Vec3Fixed = [0,0,0]
+        pos[i] = axis_displace
+        return (
+            <group key={i} position={pos} rotation={param.rot}>
+                <AxisLine 
+                    len={len} 
+                    rad={props.rad} 
                     arrowDim={props.arrowDim} 
                     />
+            </group>
+        )
     })
     return (
         <group>
