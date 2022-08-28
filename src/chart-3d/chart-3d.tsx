@@ -56,11 +56,11 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
     useFrame((_state, delta) => {
         setTimer(timer + delta)
         setCamTimer(camTimer + delta)
-        if (camTimer > 0.01) {
+        if (camTimer > 0.02) {
             setCamDate(!camDate)
             setCamTimer(0)
         }
-        if (timer > 0.01) {
+        if (timer > 0.1) {
             setTrigger(true)
             setTimer(0)
         }
@@ -80,19 +80,15 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
     const [currCam, setCamCurr] = useState([0,0,0])
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
+    const CAM_DISPLACE = new THREE.Vector3(10,10,10)
     useFrame((_state, delta) => {
-        const CAM_DISPLACE = new THREE.Vector3(10,10,10)
-
         // implement exponential differential equation (likely linear diff equation) with damping
         // so camera will try to catch up to points rapidly
         const dimMap = [xscale, yscale]
         const recentFuncPtScaled = xyPtsCurr.at(-1)?.map((val, i) => val * dimMap[i]) as Vec2Fixed || [0,0] as Vec2Fixed
         const idealCam = (new THREE.Vector3(recentFuncPtScaled[0], 0, 0)).add(CAM_DISPLACE)
-        console.log('idealCam huh?', idealCam)
         const camVec = new THREE.Vector3(...currCam)
         const diff2Ideal = idealCam.sub(camVec)
-        console.log('diff2ideal eh?:', diff2Ideal)
-        console.log('diff2ideal same as ideal?', diff2Ideal.equals(camVec))
 
         const displace = diff2Ideal.multiplyScalar(Math.pow(0.9, delta * 100))
         setDisplaceAvg(displace.multiplyScalar(displaceAlpha).add(displaceAvg.multiplyScalar(1 - displaceAlpha)))
@@ -104,9 +100,7 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
         camRef?.current?.position.setX(currCam[0])
         camRef?.current?.position.setY(currCam[1])
         camRef?.current?.position.setZ(currCam[2])
-        const dimMap = [xscale, yscale]
-        const recentFuncPtScaled = xyPtsCurr.at(-1)?.map((val, i) => val * dimMap[i]) as Vec2Fixed || [0,0] as Vec2Fixed
-        camRef?.current?.lookAt(recentFuncPtScaled[0],0,0)
+        camRef?.current?.lookAt(camRef?.current?.position.clone().sub(CAM_DISPLACE))
         setCamDate(false)
     }, [camDate])
 
@@ -130,10 +124,6 @@ function genPoints(end: number) {
 
 function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
     const camR: React.MutableRefObject<THREE.PerspectiveCamera | null> = useRef(null)
-
-    // useEffect(() => {
-    //     camR.current?.position.set(...props.pt)
-    // }, [props.pt, props.updateFlag])
 
     useEffect(() => {
         if (!camR.current) {
