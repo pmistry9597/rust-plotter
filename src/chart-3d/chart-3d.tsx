@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Vec2Fixed, Vec3Fixed } from "../model/three-helpers";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
-import { seg_prop_gen, SegProp } from "./math-manip";
+import { seg_prop_gen } from "./math-manip";
 
 export function Chart3d() {
     const end = 40
@@ -61,17 +61,23 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
             setCamTimer(0)
         }
         if (timer > 0.1) {
-            setTrigger(true)
+            if (Math.random() > 0.4) {
+                setTrigger(true)
+            }
             setTimer(0)
         }
     })
+    // pt injection
     useEffect(() => {
-        if (!trigger) {
+        const pts = genPoints(props.end)
+        if (xyPtsCurr.length == pts.length) {
             return
         }
-        const pts = genPoints(props.end)
-        const subthing = pts.slice(0, xyPtsCurr.length + 1)
-        setxyPts(subthing)
+        const pt = pts[xyPtsCurr.length]
+        pt[0] += Math.random() * 5
+        const newxyPtsCurr = [...xyPtsCurr]
+        newxyPtsCurr.push(pt)
+        setxyPts(newxyPtsCurr)
 
         setTrigger(false)
     }, [trigger])
@@ -80,17 +86,16 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
     const [currCam, setCamCurr] = useState([0,0,0])
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
-    const CAM_DISPLACE = new THREE.Vector3(10,10,10)
+    const [cam_displace, setCamDisp] = useState(new THREE.Vector3(10,10,10))
     useFrame((_state, delta) => {
-        // implement exponential differential equation (likely linear diff equation) with damping
-        // so camera will try to catch up to points rapidly
         const dimMap = [xscale, yscale]
         const recentFuncPtScaled = xyPtsCurr.at(-1)?.map((val, i) => val * dimMap[i]) as Vec2Fixed || [0,0] as Vec2Fixed
-        const idealCam = (new THREE.Vector3(recentFuncPtScaled[0], 0, 0)).add(CAM_DISPLACE)
+        const idealCam = (new THREE.Vector3(recentFuncPtScaled[0], 0, 0)).add(cam_displace)
         const camVec = new THREE.Vector3(...currCam)
         const diff2Ideal = idealCam.sub(camVec)
 
-        const displace = diff2Ideal.multiplyScalar(Math.pow(0.9, delta * 100))
+        const decayTimeBase = Math.pow(0.7, 100)
+        const displace = diff2Ideal.multiplyScalar(Math.pow(decayTimeBase, delta))
         setDisplaceAvg(displace.multiplyScalar(displaceAlpha).add(displaceAvg.multiplyScalar(1 - displaceAlpha)))
         const [camX, camY, camZ] = currCam
         const newCamPt: Vec3Fixed = [camX + displaceAvg.x, camY + displaceAvg.y, camZ + displaceAvg.z]
@@ -100,7 +105,7 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
         camRef?.current?.position.setX(currCam[0])
         camRef?.current?.position.setY(currCam[1])
         camRef?.current?.position.setZ(currCam[2])
-        camRef?.current?.lookAt(camRef?.current?.position.clone().sub(CAM_DISPLACE))
+        camRef?.current?.lookAt(camRef?.current?.position.clone().sub(cam_displace))
         setCamDate(false)
     }, [camDate])
 
@@ -129,8 +134,6 @@ function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.Per
         if (!camR.current) {
             return
         }
-
-        camR.current?.lookAt(new THREE.Vector3(0,0,0))
         props.setCamRef(camR)
     }, [camR])
 
@@ -264,29 +267,31 @@ function AxisLine(props: {len: number, rad: number, arrowDim: {wd: number, hght:
 
 function AxesElem(props: {ranges: [Vec2Fixed, Vec2Fixed, Vec2Fixed], 
                     rad: number, arrowDim: {wd: number, hght: number}}) {
-    const axesParams: {key: string, rot: Vec3Fixed}[] =
-        [ 
-            // assuming body starts from parallel to y axis
-            {key: 'x', rot: [0,0,-0.5 * Math.PI]},
-            {key: 'y', rot: [0,0,0]},
-            {key: 'z', rot: [0.5 * Math.PI,0,0]},
-        ]
-    const axes = axesParams.map((param, i) => {
-        const [beg, end] = props.ranges[i]
-        const len = end - beg
-        const axis_displace = beg + len * 0.5
-        const pos: Vec3Fixed = [0,0,0]
-        pos[i] = axis_displace
-        return (
-            <group key={i} position={pos} rotation={param.rot}>
-                <AxisLine 
-                    len={len} 
-                    rad={props.rad} 
-                    arrowDim={props.arrowDim} 
-                    />
-            </group>
-        )
-    })
+    const axes = useMemo(() => {
+        const axesParams: {key: string, rot: Vec3Fixed}[] =
+            [ 
+                // assuming body starts from parallel to y axis
+                {key: 'x', rot: [0,0,-0.5 * Math.PI]},
+                {key: 'y', rot: [0,0,0]},
+                {key: 'z', rot: [0.5 * Math.PI,0,0]},
+            ]
+        return axesParams.map((param, i) => {
+            const [beg, end] = props.ranges[i]
+            const len = end - beg
+            const axis_displace = beg + len * 0.5
+            const pos: Vec3Fixed = [0,0,0]
+            pos[i] = axis_displace
+            return (
+                <group key={i} position={pos} rotation={param.rot}>
+                    <AxisLine 
+                        len={len} 
+                        rad={props.rad} 
+                        arrowDim={props.arrowDim} 
+                        />
+                </group>
+            )
+        })
+    }, [props])
     return (
         <group>
             {axes}
