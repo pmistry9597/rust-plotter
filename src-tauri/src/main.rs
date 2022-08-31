@@ -5,36 +5,36 @@
 
 mod chart;
 
+use std::sync::Arc;
+use futures::lock::Mutex;
+use chart::types as chart_types;
+use chart::worker_proc_src_chunk;
 use tauri::async_runtime;
-use chart::types::{ Vec2 };
 
-async fn shit_data(raw_in: async_runtime::Sender<Vec2>) {
-  if let Err(_err) = raw_in.send([0.2, 3.4]).await {
+async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::RlDataChunk<N>>) {
+  let rl_data = chart_types::RlData{pos: [0.1,0.2,0.3]};
+  let out: chart_types::RlDataChunk<N> = [rl_data; N];
+  if let Err(_err) = raw_in.send(out).await {
     println!("this fucker took a shit!");
-  }
-}
-
-async fn print_crap(mut raw_out: async_runtime::Receiver<Vec2>) {
-  'whoreloop: loop {
-    match raw_out.recv().await {
-      Some(raw) => {
-        println!("here da dat: {:?}", raw);
-      },
-      None => {
-        break 'whoreloop;
-      }
-    }
   }
 }
 
 fn main() {
   let buf_size: usize = 7;
-  let (raw_in, raw_out) = async_runtime::channel::<Vec2>(buf_size); // should move into closure if not used outside
+  let (raw_in, raw_out) = async_runtime::channel::<chart_types::RlDataChunk<3>>(buf_size); // should move into closure if not used outside
+  let raw_out_arc = Arc::new(Mutex::new(raw_out)); // finish fucker
 
   tauri::Builder::default()
     .setup(|_app| {
       async_runtime::spawn(shit_data(raw_in));
-      async_runtime::spawn(print_crap(raw_out));
+      async_runtime::spawn(worker_proc_src_chunk(
+        move || {
+          let raw_out_arc = raw_out_arc.clone();
+          async move {
+            raw_out_arc.lock().await.recv().await
+          }
+        }
+      ));
       Ok(())
     })
     .run(tauri::generate_context!())
