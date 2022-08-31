@@ -1,9 +1,11 @@
 pub struct MetaData {
-    cylCount: i64,
-    ptCount: i64,
+    cyl_count: i64,
+    pt_count: i64,
 }
 
-pub type Vec3 = [f32; 3];
+pub type VecN<const N: usize> = [f32; N];
+pub type Vec3 = VecN<3>;
+pub type Vec2 = VecN<2>;
 
 // precursor to general mesh?
 pub struct CylProp {
@@ -14,7 +16,7 @@ pub struct CylProp {
 
 pub struct PtProp {
     pos: Vec3,
-    rlData: RlData,
+    rl_data: RlData,
 }
 
 // contains source data (not the rendering sort)
