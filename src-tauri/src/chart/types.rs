@@ -17,12 +17,12 @@ pub struct CylProp {
 }
 
 pub struct PtProp {
-    pos: Vec3,
-    rl_data: RlData,
+    pub pos: Vec2,
+    pub rl_data: RlData,
 }
 
 // contains source data (not the rendering sort)
 #[derive(Debug, Clone, Copy)]
 pub struct RlData {
-    pub pos: Vec3,
+    pub pos: Vec2,
 }
