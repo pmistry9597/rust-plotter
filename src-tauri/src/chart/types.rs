@@ -3,8 +3,7 @@ pub struct MetaData {
     pt_count: i64,
 }
 
-pub type RlDataChunk<const N: usize> = [RlData; N];
-
+pub type RlDataOpChunk<const N: usize> = [Option<RlData>; N];
 pub type VecN<const N: usize> = [f32; N];
 pub type Vec3 = VecN<3>;
 pub type Vec2 = VecN<2>;

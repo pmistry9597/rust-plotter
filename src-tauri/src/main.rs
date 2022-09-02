@@ -10,8 +10,10 @@ use chart::types::Vec2;
 use futures::{lock::Mutex};
 use chart::{types as chart_types, ChartProc};
 use tauri::async_runtime;
+use rand::rngs::StdRng;
+use rand::Rng;
 
-async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::RlDataChunk<N>>) {
+async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::RlDataOpChunk<N>>) {
   let rate = 20;
   let (x_begin, x_end) = (0, 40);
   let x_len = x_end - x_begin;
@@ -25,13 +27,17 @@ async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::Rl
       [x, yfunc(x)] as chart_types::Vec2
     }).collect();
   let mut curr_chunk_iter = curr_chunk_vec.chunks(N);
+
   loop {
-    let mut src_chunk = [chart_types::RlData{pos:[-2.0,-2.0]}; N];
+    let mut src_chunk: chart_types::RlDataOpChunk<N> = [None; N];
     let chunk_iter = curr_chunk_iter.next().expect("ran out eh?").iter()
     .map(|pt| chart_types::RlData{pos: pt.clone()});
 
+    let mut rand_cum: StdRng = rand::SeedableRng::from_entropy();
+
     src_chunk.iter_mut().zip(chunk_iter)
-    .for_each(|(arr, chunk)| *arr = chunk);
+    .filter(|_garbo| rand_cum.gen_range(0..10) as f32 / 10.0 > 0.5)
+    .for_each(|(arr, chunk)| *arr = Some(chunk));
 
     if let Err(_err) = raw_in.send(src_chunk).await {
       println!("this fucker took a shit!");
@@ -47,7 +53,7 @@ fn main() {
 
   tauri::Builder::default()
     .setup(move |_app| {
-      let (raw_in, raw_out) = async_runtime::channel::<chart_types::RlDataChunk<3>>(buf_size); // should move into closure if not used outside
+      let (raw_in, raw_out) = async_runtime::channel::<chart_types::RlDataOpChunk<3>>(buf_size); // should move into closure if not used outside
       let raw_out_arc = Arc::new(Mutex::new(raw_out));
 
       let chart_proc = ChartProc::new();
