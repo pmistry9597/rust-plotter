@@ -6,6 +6,7 @@
     "@react-three/drei": "^9.19.7",
     "@react-three/fiber": "^8.3.0",
     "@react-three/postprocessing": "^2.6.1",
+    "@tauri-apps/api": "^1.0.2",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",

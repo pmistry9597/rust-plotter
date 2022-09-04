@@ -35,19 +35,26 @@ impl ChartProc {
 
             // process section
             // pt props
-            let scale: [f32; 2] = [1.0, 1.0];
-            let new_pt_props_iter = data_chunk_iter.clone().map(|data| {
-                let pos = scale_vec2(data.pos, scale);
-                PtProp{pos, rl_data: data}
-            });
+            let scale: Vec2 = [1.0, 1.0];
+            let new_ptprops_iter = gen_ptprops_iter(data_chunk_iter.clone(), scale);
             // mesh props?
 
             println!("wow look at me {:?}", data_chunk_iter.clone().collect::<Vec<RlData>>());
 
-            self.pt_props.extend(new_pt_props_iter);
+            self.pt_props.extend(new_ptprops_iter);
             self.srcs.extend(data_chunk_iter);
         }
     }
+}
+
+fn gen_ptprops_iter<VecIter>(data_chunk_iter: VecIter, scale: Vec2) -> impl Iterator<Item = PtProp> 
+where 
+    VecIter: Iterator<Item = RlData> + Clone,
+{
+    data_chunk_iter.map(move |data| {
+        let pos = scale_vec2(data.pos, scale);
+        PtProp{pos, rl_data: data}
+    })
 }
 
 fn scale_vec2(pt: Vec2, scale: Vec2) -> Vec2 {

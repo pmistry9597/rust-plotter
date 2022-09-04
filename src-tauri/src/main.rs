@@ -4,12 +4,13 @@
 )]
 
 mod chart;
+mod notify_unit;
 
 use std::{sync::Arc, time::Duration};
 use chart::types::Vec2;
 use futures::{lock::Mutex};
 use chart::{types as chart_types, ChartProc};
-use tauri::async_runtime;
+use tauri::{async_runtime};
 use rand::rngs::StdRng;
 use rand::Rng;
 
