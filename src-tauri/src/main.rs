@@ -4,15 +4,46 @@
 )]
 
 mod chart;
-mod notify_unit;
+mod notify_block;
+mod test_fake_blck;
 
 use std::{sync::Arc, time::Duration};
 use chart::types::Vec2;
 use futures::{lock::Mutex};
 use chart::{types as chart_types, ChartProc};
-use tauri::{async_runtime};
+use tauri::{async_runtime, generate_handler};
 use rand::rngs::StdRng;
 use rand::Rng;
+use test_fake_blck::notify_worker;
+
+fn main() {
+  let buf_size: usize = 7;
+
+  tauri::Builder::default()
+    .setup(move |app| {
+      let (raw_in, raw_out) = async_runtime::channel::<chart_types::RlDataOpChunk<3>>(buf_size); // should move into closure if not used outside
+      let raw_out_arc = Arc::new(Mutex::new(raw_out));
+
+      let chart_proc = ChartProc::new();
+      async_runtime::spawn(chart_proc.src_chunk_worker(
+        move || {
+          let raw_out_arc = raw_out_arc.clone();
+          async move {
+            raw_out_arc.lock().await.recv().await
+          }
+        }
+      ));
+      async_runtime::spawn(shit_data(raw_in));
+
+      async_runtime::spawn(notify_worker(app.handle()));
+      Ok(())
+    })
+    .manage(test_fake_blck::init_state())
+    .invoke_handler(generate_handler![test_fake_blck::get_blck_fake])
+
+    .run(tauri::generate_context!())
+    .expect("error while running tauri application");
+}
 
 async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::RlDataOpChunk<N>>) {
   let rate = 20;
@@ -47,28 +78,4 @@ async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::Rl
     
     tokio::time::sleep(Duration::from_millis(700)).await;
   }
-}
-
-fn main() {
-  let buf_size: usize = 7;
-
-  tauri::Builder::default()
-    .setup(move |_app| {
-      let (raw_in, raw_out) = async_runtime::channel::<chart_types::RlDataOpChunk<3>>(buf_size); // should move into closure if not used outside
-      let raw_out_arc = Arc::new(Mutex::new(raw_out));
-
-      let chart_proc = ChartProc::new();
-      async_runtime::spawn(chart_proc.src_chunk_worker(
-        move || {
-          let raw_out_arc = raw_out_arc.clone();
-          async move {
-            raw_out_arc.lock().await.recv().await
-          }
-        }
-      ));
-      async_runtime::spawn(shit_data(raw_in));
-      Ok(())
-    })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
 }
