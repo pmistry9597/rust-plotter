@@ -11,10 +11,10 @@ where
 }
 
 // make testing the tauri::window::Window easier duh
-pub trait WindowEmit<S: Serialize + Clone + Debug + PartialEq> {
+pub trait WindowEmit<S: Serialize + Clone> {
     fn emit(&self, event: &str, payload: S) -> tauri::Result<()>;  
 }
-impl<S: Serialize + Clone + Debug + PartialEq> WindowEmit<S> for Window {
+impl<S: Serialize + Clone> WindowEmit<S> for Window {
     fn emit(&self, event: &str, payload: S) -> tauri::Result<()> {
         Window::emit(self, event, payload)
     }
@@ -29,9 +29,9 @@ pub struct URMap<URType> {
     urtype_name: HashMap<URType, &'static str>,
 }
 impl<URType> URMap<URType> {
-    pub fn notify<Window>(self: &Self, index: i32, window: Window)
+    pub fn notify<Window>(self: &Self, urtype: URType, index: i32, window: Window)
     where
-        URType: Serialize + Clone + Debug + PartialEq,
+        URType: Serialize + Clone,
         Window: WindowEmit<URType>,
     {
     
@@ -57,15 +57,15 @@ mod full_tests {
     use std::{sync::Arc, fmt::Debug};
     use serde::Serialize;
 
-    use crate::notify_unit::{URHook, UnitRepo, URTypeInfo};
+    use crate::notify_unit::{UnitRepo, URTypeInfo};
 
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Serialize, Clone, Debug, PartialEq)]
     struct Yum;
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Serialize, Clone, Debug, PartialEq)]
     struct Cum;
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Serialize, Clone, Debug, PartialEq)]
     struct Bum;
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Serialize, Clone, Debug, PartialEq)]
     enum UnitType {
         Yum(Option<Yum>),
         Cum(Option<Cum>),
@@ -101,7 +101,7 @@ mod full_tests {
         let urmap = URMap::<UnitType>::new(map_info);
         let mock_window = MockWindow{ expec_event: "fake_event", expec_payload: UnitType::Yum(None) };
 
-        urmap.notify(0, mock_window);
+        urmap.notify(UnitType::Yum(None) , 0, mock_window);
         // check above called emit and other shit
     }
 
@@ -110,6 +110,3 @@ mod full_tests {
 
     }
 }
-
-
-// figure out how to test without so many freaking bounds on actual code (not tests/mocks)
