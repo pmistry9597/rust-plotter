@@ -9,12 +9,13 @@ mod test_fake_blck;
 
 use std::{sync::Arc, time::Duration};
 use chart::types::Vec2;
-use futures::{lock::Mutex};
-use chart::{types as chart_types, ChartProc};
-use tauri::{async_runtime, generate_handler};
+use futures::lock::Mutex;
+use chart::{types as chart_types, ChartProc, src_chunk_worker};
+use tauri::{async_runtime, Manager, generate_handler};
 use rand::rngs::StdRng;
 use rand::Rng;
 use test_fake_blck::notify_worker;
+use chart::get_ptprop;
 
 fn main() {
   let buf_size: usize = 7;
@@ -24,8 +25,10 @@ fn main() {
       let (raw_in, raw_out) = async_runtime::channel::<chart_types::RlDataOpChunk<3>>(buf_size); // should move into closure if not used outside
       let raw_out_arc = Arc::new(Mutex::new(raw_out));
 
-      let chart_proc = ChartProc::new();
-      async_runtime::spawn(chart_proc.src_chunk_worker(
+      app.manage(Arc::new(Mutex::new(ChartProc::new(app.get_window("main").unwrap()))));
+      async_runtime::spawn(
+        src_chunk_worker(
+        app.handle(),
         move || {
           let raw_out_arc = raw_out_arc.clone();
           async move {
@@ -38,8 +41,7 @@ fn main() {
       async_runtime::spawn(notify_worker(app.handle()));
       Ok(())
     })
-    .manage(test_fake_blck::init_state())
-    .invoke_handler(generate_handler![test_fake_blck::get_blck_fake])
+    .invoke_handler(generate_handler![get_ptprop])
 
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -55,8 +57,9 @@ async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::Rl
   let yfunc = f32::sin;
   let curr_chunk_vec: Vec<Vec2> = (0..count).map(
     move |i| {
+      let mut rand_cum: StdRng = rand::SeedableRng::from_entropy();
       let x = i as f32 * interv;
-      [x, yfunc(x)] as chart_types::Vec2
+      [x + rand_cum.gen_range(0..2) as f32 * 0.3, yfunc(x) + rand_cum.gen_range(0..2) as f32 * 0.3] as chart_types::Vec2
     }).collect();
   let mut curr_chunk_iter = curr_chunk_vec.chunks(N);
 
@@ -76,6 +79,6 @@ async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::Rl
       break;
     }
     
-    tokio::time::sleep(Duration::from_millis(700)).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
   }
 }

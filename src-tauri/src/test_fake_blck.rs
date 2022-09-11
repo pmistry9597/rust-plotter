@@ -3,7 +3,7 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::{State, AppHandle, Manager};
 
-use crate::notify_block::{NamedBlckRepo, notify_block};
+use crate::notify_block::notify_block;
 
 #[tauri::command]
 pub fn get_blck_fake(i: i32, fakeblck_repo: State<FakeBlckRepo>) -> Result<FakeBlck, String> {
@@ -33,11 +33,6 @@ impl FakeBlckRepo {
         }
     }
 }
-impl NamedBlckRepo for FakeBlckRepo {
-  fn get_name(&self) -> &'static str {
-    "fake_blck"
-  }
-}
 
 pub fn init_state() -> FakeBlckRepo {
     let blcks = vec![ 
@@ -50,9 +45,8 @@ pub fn init_state() -> FakeBlckRepo {
 pub async fn notify_worker<'a>(handle: AppHandle) {
     let mut i = 0;
     loop {
-        let fakeblck_repo = handle.state::<FakeBlckRepo>().inner();
         let window = handle.get_window("main").unwrap();
-        notify_block(i, fakeblck_repo, &window).expect("smthn broke from notify_block alright");
+        notify_block(i, "fake_blck", &window).expect("smthn broke from notify_block alright");
         i = (i + 1) % 2;
         tokio::time::sleep(Duration::from_millis(700)).await;
     }

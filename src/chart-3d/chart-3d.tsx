@@ -5,6 +5,8 @@ import { Vec2Fixed, Vec3Fixed } from "../model/three-helpers";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
 import { seg_prop_gen } from "./math-manip";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/tauri";
 
 export function Chart3d() {
     const end = 40
@@ -43,11 +45,22 @@ export function Chart3d() {
     )
 }
 
+interface BlckInfo {
+    index: number,
+    name: string,
+}
+interface PtProp {
+    pos: Vec2Fixed,
+}
+
 function TimedStream(props: {scale: [number, number], camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null, xyPtsCurr: Vec2Fixed[], setxyPts: any, end: number}) {
     const { xyPtsCurr, setxyPts, camRef } = props
     const [xscale, yscale] = props.scale
 
-    const [trigger, setTrigger] = useState(false)
+    const xyref = useRef([] as Vec2Fixed[])
+    setxyPts(xyref.current)
+
+    // const [trigger, setTrigger] = useState(false)
     const [timer, setTimer] = useState(0)
     const [camTimer, setCamTimer] = useState(0)
     const [camDate, setCamDate] = useState(false)
@@ -60,27 +73,23 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
             setCamDate(!camDate)
             setCamTimer(0)
         }
-        if (timer > 0.1) {
-            if (Math.random() > 0.4) {
-                setTrigger(true)
-            }
-            setTimer(0)
-        }
     })
+    
     // pt injection
     useEffect(() => {
-        const pts = genPoints(props.end)
-        if (xyPtsCurr.length == pts.length) {
-            return
-        }
-        const pt = pts[xyPtsCurr.length]
-        pt[0] += Math.random() * 5
-        const newxyPtsCurr = [...xyPtsCurr]
-        newxyPtsCurr.push(pt)
-        setxyPts(newxyPtsCurr)
-
-        setTrigger(false)
-    }, [trigger])
+        listen("pt_update", (event: any) => {
+            const payload: BlckInfo = event.payload;
+            invoke("get_ptprop", {i: payload.index}).then((ptprop_val) => {
+                const ptprop = ptprop_val as PtProp
+                const newxyPtsCurr = [...xyref.current]
+                newxyPtsCurr.push(ptprop.pos)
+                console.log(newxyPtsCurr)
+                xyref.current = newxyPtsCurr
+            }).catch((reason) => {
+                console.log("huh retrieving didn't work when sent?: ",  reason)
+            })
+        })
+      }, [])
 
     // precursor to camera tracking routine
     const [currCam, setCamCurr] = useState([0,0,0])

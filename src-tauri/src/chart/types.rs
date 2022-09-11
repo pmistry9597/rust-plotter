@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 pub struct MetaData {
     cyl_count: i64,
     pt_count: i64,
@@ -15,13 +17,14 @@ pub struct CylProp {
     len: f32,
 }
 
+#[derive(Serialize, Clone, Copy)]
 pub struct PtProp {
     pub pos: Vec2,
     pub rl_data: RlData,
 }
 
 // contains source data (not the rendering sort)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Serialize, Clone, Copy)]
 pub struct RlData {
     pub pos: Vec2,
 }
