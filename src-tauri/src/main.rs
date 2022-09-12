@@ -5,7 +5,6 @@
 
 mod chart;
 mod notify_block;
-mod test_fake_blck;
 
 use std::{sync::Arc, time::Duration};
 use chart::types::Vec2;
@@ -14,7 +13,6 @@ use chart::{types as chart_types, ChartProc, src_chunk_worker};
 use tauri::{async_runtime, Manager, generate_handler};
 use rand::rngs::StdRng;
 use rand::Rng;
-use test_fake_blck::notify_worker;
 use chart::get_ptprop;
 
 fn main() {
@@ -37,8 +35,6 @@ fn main() {
         }
       ));
       async_runtime::spawn(shit_data(raw_in));
-
-      async_runtime::spawn(notify_worker(app.handle()));
       Ok(())
     })
     .invoke_handler(generate_handler![get_ptprop])

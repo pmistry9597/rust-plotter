@@ -1,4 +1,5 @@
 pub mod types;
+mod data_proc;
 
 use std::{future::Future, sync::Arc};
 use futures::lock::Mutex;
@@ -6,7 +7,8 @@ use tauri::{Window, State, AppHandle, Manager};
 use types::RlDataOpChunk;
 
 use crate::notify_block::notify_block;
-use self::types::*;
+use types::*;
+use data_proc::*;
 
 #[tauri::command]
 pub fn get_ptprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> PtProp {
@@ -18,7 +20,7 @@ pub fn get_ptprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> PtPr
 
 pub struct ChartProc {
     srcs: Vec<RlData>,
-    // mesh_props: Vec<CylProp>,
+    mesh_props: Vec<CylProp>,
     pt_props: Vec<PtProp>,
     window: Window,
 }
@@ -27,7 +29,7 @@ impl ChartProc {
     pub fn new(window: Window) -> ChartProc {
         ChartProc{
             srcs: vec![],
-            // mesh_props: vec![],
+            mesh_props: vec![],
             pt_props: vec![],
             window,
         }
@@ -50,46 +52,29 @@ where
         .map(|x| x.unwrap());
 
         // process section
-        // pt props
         let scale: Vec2 = [3.0, 2.0];
         let new_ptprops_iter = gen_ptprops_iter(data_chunk_iter.clone(), scale);
-        // mesh props?
+        let new_meshprops_iter = gen_meshprops_iter(new_ptprops_iter.clone(), [5.0,5.0]);
 
         let mut chartproc = chartproc_state.lock().await;
 
-        // notify frontend
-        notify_new_data(new_ptprops_iter.clone(), &chartproc.pt_props, &chartproc.window);
-
-        chartproc.pt_props.extend(new_ptprops_iter);
         chartproc.srcs.extend(data_chunk_iter);
+        chartproc.pt_props.extend(new_ptprops_iter.clone());
+        // chartproc.mesh_props.extend(new_meshprops_iter.clone());
+
+        // notify frontend
+        let pt_count = chartproc.pt_props.len();
+        notify_new_data("pt_update", (pt_count-new_ptprops_iter.count())..pt_count
+            , &chartproc.window);
+        // notify_new_data("mesh_update", new_meshprops_iter, &chartproc.mesh_props, &chartproc.window);
     }
 }
 
-fn notify_new_data<I>(new_ptprops_iter: I, pt_props: &Vec<PtProp>, window: &Window)
+fn notify_new_data<I>(name: &str, new_index_iter: I, window: &Window)
 where
-    I: Iterator<Item = PtProp> + Clone,
+    I: Iterator<Item = usize> + Clone,
 {
-    let count = new_ptprops_iter.clone().count();
-    if count > 0 {
-        let begin_index = pt_props.len();
-        let end_index = begin_index + count;
-        (begin_index..end_index).for_each(|i| {
-            notify_block(i.try_into().expect("weird af error eh"), "pt_update", window).expect("Failure to notify goddammit");
-        })
-    }
-}
-
-fn gen_ptprops_iter<VecIter>(data_chunk_iter: VecIter, scale: Vec2) -> impl Iterator<Item = PtProp> + Clone
-where 
-    VecIter: Iterator<Item = RlData> + Clone,
-{
-    data_chunk_iter.map(move |data| {
-        let pos = scale_vec2(data.pos, scale);
-        PtProp{pos, rl_data: data}
-    })
-}
-
-fn scale_vec2(pt: Vec2, scale: Vec2) -> Vec2 {
-    let scaled_vec: Vec<f32> = pt.iter().zip(scale.iter()).map(|(elem, scaler)| elem * scaler).collect();
-    scaled_vec[0..2].try_into().expect("wow what a stupid failure")
+    new_index_iter.for_each(|i| {
+        notify_block(i, name, window).expect("Failure to notify goddammit");
+    });
 }

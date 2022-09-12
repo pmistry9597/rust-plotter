@@ -4,25 +4,25 @@ import * as THREE from 'three';
 import { Vec2Fixed, Vec3Fixed } from "../model/three-helpers";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
-import { seg_prop_gen } from "./math-manip";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 
 export function Chart3d() {
     const end = 40
-    const [xyPtsCurr, setxyPts] = useState<Vec2Fixed[]>([])
+    const [xypts, setxypts] = useState<Vec2Fixed[]>([])
     const [camRef, setCamRef] = useState<React.MutableRefObject<THREE.PerspectiveCamera | null> | null>(null)
 
     const setCamRefHandle = useMemo(() => {
         return (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => setCamRef(camRef)
     }, [])
 
+    const [trig, settrig] = useState(false)
     const scale: [number, number] = [1.0, 1.0]
 
     return (
         <>
             <Canvas dpr={[2,1]}>
-                <TimedStream scale={scale} camRef={camRef} xyPtsCurr={xyPtsCurr} setxyPts={setxyPts} end={end} />
+                <TimedStream trig={trig} settrig={settrig} scale={scale} camRef={camRef} xypts={xypts} setxypts={setxypts} end={end} />
                 <CamControl setCamRef={setCamRefHandle} />
                 <AxesElem 
                     ranges={[[-4,end],[-4,4],[-4,4]]} 
@@ -30,7 +30,7 @@ export function Chart3d() {
                     arrowDim={{wd: 0.2, hght: 0.4}} 
                 />
                 <Scaler scaling={[1,1,1]}>
-                    <BasicFunc xyPtsCurr={xyPtsCurr} ptRad={0.1} lineRad={0.04} scale={scale}
+                    <BasicFunc trig={trig} settrig={settrig} xypts={xypts} setxypts={setxypts} ptRad={0.1} lineRad={0.04} scale={scale}
                         end={end} />
                 </Scaler>
                 <EffectComposer>
@@ -45,6 +45,12 @@ export function Chart3d() {
     )
 }
 
+interface CylProp {
+    len: number,
+    euler: Vec3Fixed,
+    pos: Vec3Fixed,
+}
+
 interface BlckInfo {
     index: number,
     name: string,
@@ -53,12 +59,11 @@ interface PtProp {
     pos: Vec2Fixed,
 }
 
-function TimedStream(props: {scale: [number, number], camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null, xyPtsCurr: Vec2Fixed[], setxyPts: any, end: number}) {
-    const { xyPtsCurr, setxyPts, camRef } = props
-    const [xscale, yscale] = props.scale
+function TimedStream(props: {trig: boolean, settrig: any, scale: [number, number], camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null, xypts: Vec2Fixed[], setxypts: any, end: number}) {
+    const { xypts, setxypts, camRef } = props
 
     const xyref = useRef([] as Vec2Fixed[])
-    setxyPts(xyref.current)
+    setxypts(xyref.current)
 
     // const [trigger, setTrigger] = useState(false)
     const [timer, setTimer] = useState(0)
@@ -79,15 +84,15 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
     useEffect(() => {
         listen("pt_update", (event: any) => {
             const payload: BlckInfo = event.payload;
-            invoke("get_ptprop", {i: payload.index}).then((ptprop_val) => {
+            const i = payload.index
+            invoke("get_ptprop", {i}).then((ptprop_val) => {
                 const ptprop = ptprop_val as PtProp
-                const newxyPtsCurr = [...xyref.current]
-                newxyPtsCurr.push(ptprop.pos)
-                console.log(newxyPtsCurr)
-                xyref.current = newxyPtsCurr
+                xypts.push(ptprop.pos)
+                xyref.current = xypts
             }).catch((reason) => {
                 console.log("huh retrieving didn't work when sent?: ",  reason)
             })
+            props.settrig(true)
         })
       }, [])
 
@@ -95,10 +100,9 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
     const [currCam, setCamCurr] = useState([0,0,0])
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
-    const [cam_displace, setCamDisp] = useState(new THREE.Vector3(10,10,10))
+    const cam_displace = new THREE.Vector3(10,10,10)
     useFrame((_state, delta) => {
-        const dimMap = [xscale, yscale]
-        const recentFuncPtScaled = xyPtsCurr.at(-1)?.map((val, i) => val * dimMap[i]) as Vec2Fixed || [0,0] as Vec2Fixed
+        const recentFuncPtScaled = xypts.at(-1) || [0,0] as Vec2Fixed
         const idealCam = (new THREE.Vector3(recentFuncPtScaled[0], 0, 0)).add(cam_displace)
         const camVec = new THREE.Vector3(...currCam)
         const diff2Ideal = idealCam.sub(camVec)
@@ -121,21 +125,6 @@ function TimedStream(props: {scale: [number, number], camRef: React.MutableRefOb
     return <></>
 }
 
-function genPoints(end: number) {
-    const range = [0, end]
-    const rate = 15
-    const size = 5 * rate
-    const interv = (range[1] - range[0]) / size
-    const xPre: number[] = [...Array<number>(size)].map((_, i) => {
-        return i * interv
-    })
-    const x = xPre
-    return x.map((xval, i) => {
-        const yval = Math.sin(xval)
-        return [xval, yval]
-    }) as [number, number][]
-}
-
 function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
     const camR: React.MutableRefObject<THREE.PerspectiveCamera | null> = useRef(null)
 
@@ -155,69 +144,48 @@ function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.Per
     )
 }
 
-function BasicFunc(props: {xyPtsCurr: Vec2Fixed[], ptRad: number, lineRad: number, scale: Vec2Fixed, end:number}) {
-    const [oldData, setOldData] = useState([] as Vec2Fixed[])
-    const [entities, setEntities] = useState([] as JSX.Element[])
+function BasicFunc(props: {trig: boolean, settrig: any, xypts: Vec2Fixed[], setxypts: any, ptRad: number, lineRad: number, scale: Vec2Fixed, end:number}) {
+    const [ptRender, setptRender] = useState([] as JSX.Element[])
+    const [count, setcount] = useState(0)
+    console.log("len pls", props.xypts.length)
     useEffect(() => {
-        const xypts = props.xyPtsCurr
-
-        const tobeUpdated = xypts
-        .map((xy, i) => {
-            const xyfut = xypts[i + 1]
-            return [xy, xyfut, i] as [Vec2Fixed, Vec2Fixed | undefined, number]
-        })
-        .filter(([xy, _dataIndex], i) => {
-            const xyfut = xypts[i + 1]
-            const oldDat = oldData[i]
-            const xyold = oldDat
-            const oldDatFut = oldData[i + 1]
-            const xyfutold = oldDatFut
-
-            return (xy !== xyold) || (xyfut !== xyfutold)
-        })
-
-        const newEntities = tobeUpdated.map(([xy, xyfut, dataIndex], _i) => {
-            const segProp = seg_prop_gen(xy, xyfut, props.scale)
-            const cylProp = segProp.cyl
-
-            const bodySeg = !!cylProp ?
-            (
-                <group position={cylProp.pos} key={dataIndex}>
-                    <mesh rotation={new THREE.Euler(0, 0, cylProp.slopeAngle)} castShadow>
-                        <cylinderBufferGeometry 
-                            args={[props.lineRad, props.lineRad, cylProp.len ,16]} />
-                        <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
-                    </mesh>
-                </group>
-            ) : null
-
-            const newEntry = (
+        const xypts = props.xypts
+        xypts.slice(count).forEach((xy, dataIndex) => {
+            const newEntity = (
                 <group position={[0,0,0]} key={dataIndex}>
-                    {bodySeg}
-                    <mesh position={segProp.ptPos}>
+                    <mesh position={[...xy, 0]}>
                         <sphereGeometry args={[props.ptRad, 32,32,32]} />
                         <meshBasicMaterial color="rgb(210,100,120)"></meshBasicMaterial>
                     </mesh>
                 </group>
             )
 
-            return [newEntry, dataIndex] as [JSX.Element, number]
-        })
-
-        newEntities.forEach(([newEntry, dataIndex]) => {
-            if (dataIndex < entities.length) {
-                entities[dataIndex] = newEntry
+            if (dataIndex < ptRender.length) {
+                ptRender[dataIndex] = newEntity
             } else {
-                entities.push(newEntry)
+                ptRender.push(newEntity)
             }
         })
-        setEntities(entities)
-        setOldData(xypts)
-    }, [props.xyPtsCurr])
+        setptRender(ptRender)
+        setcount(xypts.length)
+        props.settrig(false)
+    }, [props.trig])
+
+    // cyl mesh gen code
+    // const bodySeg = !!cylProp ?
+            // (
+            //     <group position={cylProp.pos} key={dataIndex}>
+            //         <mesh rotation={new THREE.Euler(0, 0, cylProp.slopeAngle)} castShadow>
+            //             <cylinderBufferGeometry 
+            //                 args={[props.lineRad, props.lineRad, cylProp.len ,16]} />
+            //             <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
+            //         </mesh>
+            //     </group>
+            // ) : null
 
     return (
         <group>
-            {entities}
+            {ptRender}
         </group>
     )
 }

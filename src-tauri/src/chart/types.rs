@@ -1,9 +1,9 @@
 use serde::Serialize;
 
-pub struct MetaData {
-    cyl_count: i64,
-    pt_count: i64,
-}
+// pub struct MetaData {
+//     cyl_count: i64,
+//     pt_count: i64,
+// }
 
 pub type RlDataOpChunk<const N: usize> = [Option<RlData>; N];
 pub type VecN<const N: usize> = [f32; N];
@@ -12,9 +12,9 @@ pub type Vec2 = VecN<2>;
 
 // precursor to general mesh?
 pub struct CylProp {
-    pos: Vec3,
-    angle: f32,
-    len: f32,
+    pub pos: Vec3,
+    pub euler: Vec3,
+    pub len: f32,
 }
 
 #[derive(Serialize, Clone, Copy)]
