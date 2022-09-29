@@ -1,8 +1,3 @@
-#![cfg_attr(
-  all(not(debug_assertions), target_os = "windows"),
-  windows_subsystem = "windows"
-)]
-
 mod chart;
 mod notify_block;
 
@@ -13,7 +8,7 @@ use chart::{types as chart_types, ChartProc, src_chunk_worker};
 use tauri::{async_runtime, Manager, generate_handler};
 use rand::rngs::StdRng;
 use rand::Rng;
-use chart::get_ptprop;
+use chart::{get_ptprop, get_meshprop};
 
 fn main() {
   let buf_size: usize = 7;
@@ -37,8 +32,10 @@ fn main() {
       async_runtime::spawn(shit_data(raw_in));
       Ok(())
     })
-    .invoke_handler(generate_handler![get_ptprop])
-
+    .invoke_handler(generate_handler![
+      get_ptprop,
+      get_meshprop,
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

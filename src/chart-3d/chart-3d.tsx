@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from 'three';
 import { Vec2Fixed, Vec3Fixed } from "../model/three-helpers";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
+import { BlckInfo, CylProp, PtProp } from "../model/backend-comm";
+import { Md5 } from "ts-md5"
 
 export function Chart3d() {
     const end = 40
-    const [xypts, setxypts] = useState<Vec2Fixed[]>([])
+    const [ptprops, setptprops] = useState([] as PtProp[])
+    const [meshes, setmeshes] = useState([] as CylProp[])
     const [camRef, setCamRef] = useState<React.MutableRefObject<THREE.PerspectiveCamera | null> | null>(null)
 
     const setCamRefHandle = useMemo(() => {
@@ -22,7 +25,14 @@ export function Chart3d() {
     return (
         <>
             <Canvas dpr={[2,1]}>
-                <TimedStream trig={trig} settrig={settrig} scale={scale} camRef={camRef} xypts={xypts} setxypts={setxypts} end={end} />
+                <TimedStream
+                        settrig={settrig} 
+                        setptprops={setptprops} 
+                        setmeshes={setmeshes}
+                        scale={scale} 
+                        camRef={camRef} 
+                        end={end} 
+                    />
                 <CamControl setCamRef={setCamRefHandle} />
                 <AxesElem 
                     ranges={[[-4,end],[-4,4],[-4,4]]} 
@@ -30,7 +40,16 @@ export function Chart3d() {
                     arrowDim={{wd: 0.2, hght: 0.4}} 
                 />
                 <Scaler scaling={[1,1,1]}>
-                    <BasicFunc trig={trig} settrig={settrig} xypts={xypts} setxypts={setxypts} ptRad={0.1} lineRad={0.04} scale={scale}
+                    <BasicFunc
+                        trig={trig} 
+                        settrig={settrig} 
+                        ptprops={ptprops} 
+                        setptprops={setptprops} 
+                        meshes={meshes}
+                        setmeshes={setmeshes}
+                        ptRad={0.1} 
+                        lineRad={0.04} 
+                        scale={scale}
                         end={end} />
                 </Scaler>
                 <EffectComposer>
@@ -45,27 +64,22 @@ export function Chart3d() {
     )
 }
 
-interface CylProp {
-    len: number,
-    euler: Vec3Fixed,
-    pos: Vec3Fixed,
-}
+function TimedStream(props: {
+    settrig: any, 
+    scale: [number, number], 
+    camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null,
+    setptprops: any, 
+    end: number,
+    setmeshes: any,
+}) 
+{
+    const { setptprops, camRef, setmeshes } = props
 
-interface BlckInfo {
-    index: number,
-    name: string,
-}
-interface PtProp {
-    pos: Vec2Fixed,
-}
+    const ptprops_ref = useRef([] as PtProp[])
+    setptprops(ptprops_ref.current)
+    const meshes_ref = useRef([] as CylProp[])
+    setmeshes(meshes_ref.current)
 
-function TimedStream(props: {trig: boolean, settrig: any, scale: [number, number], camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null, xypts: Vec2Fixed[], setxypts: any, end: number}) {
-    const { xypts, setxypts, camRef } = props
-
-    const xyref = useRef([] as Vec2Fixed[])
-    setxypts(xyref.current)
-
-    // const [trigger, setTrigger] = useState(false)
     const [timer, setTimer] = useState(0)
     const [camTimer, setCamTimer] = useState(0)
     const [camDate, setCamDate] = useState(false)
@@ -79,20 +93,39 @@ function TimedStream(props: {trig: boolean, settrig: any, scale: [number, number
             setCamTimer(0)
         }
     })
+    // three js wont work with tauri on my setup without following for whatever reason
+    const useless_three_js = useThree()
+    useEffect(() => {
+        setInterval(() => {
+            useless_three_js.advance(0)
+        }, 5)
+    }, [])
     
-    // pt injection
+    const [recentPt, setRecentPt] = useState([0,0] as Vec2Fixed)
+    // data injection
     useEffect(() => {
         listen("pt_update", (event: any) => {
             const payload: BlckInfo = event.payload;
             const i = payload.index
             invoke("get_ptprop", {i}).then((ptprop_val) => {
                 const ptprop = ptprop_val as PtProp
-                xypts.push(ptprop.pos)
-                xyref.current = xypts
+                ptprops_ref.current.push(ptprop)
+                setRecentPt(ptprop.pos)
+
+                props.settrig(true)
             }).catch((reason) => {
                 console.log("huh retrieving didn't work when sent?: ",  reason)
             })
-            props.settrig(true)
+        })
+        listen("mesh_update", (event: any) => {
+            const payload: BlckInfo = event.payload
+            const i = payload.index
+            invoke("get_meshprop", {i}).then((meshprop_val) => {
+                const meshprop = meshprop_val as CylProp
+                meshes_ref.current.push(meshprop)
+
+                props.settrig(true)
+            })
         })
       }, [])
 
@@ -101,9 +134,9 @@ function TimedStream(props: {trig: boolean, settrig: any, scale: [number, number
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
     const cam_displace = new THREE.Vector3(10,10,10)
+    // cam_displace.multiplyScalar(4)
     useFrame((_state, delta) => {
-        const recentFuncPtScaled = xypts.at(-1) || [0,0] as Vec2Fixed
-        const idealCam = (new THREE.Vector3(recentFuncPtScaled[0], 0, 0)).add(cam_displace)
+        const idealCam = (new THREE.Vector3(recentPt[0], 0, 0)).add(cam_displace)
         const camVec = new THREE.Vector3(...currCam)
         const diff2Ideal = idealCam.sub(camVec)
 
@@ -144,48 +177,126 @@ function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.Per
     )
 }
 
-function BasicFunc(props: {trig: boolean, settrig: any, xypts: Vec2Fixed[], setxypts: any, ptRad: number, lineRad: number, scale: Vec2Fixed, end:number}) {
-    const [ptRender, setptRender] = useState([] as JSX.Element[])
-    const [count, setcount] = useState(0)
-    console.log("len pls", props.xypts.length)
-    useEffect(() => {
-        const xypts = props.xypts
-        xypts.slice(count).forEach((xy, dataIndex) => {
-            const newEntity = (
-                <group position={[0,0,0]} key={dataIndex}>
-                    <mesh position={[...xy, 0]}>
-                        <sphereGeometry args={[props.ptRad, 32,32,32]} />
-                        <meshBasicMaterial color="rgb(210,100,120)"></meshBasicMaterial>
-                    </mesh>
-                </group>
-            )
+function hash_equals(a: (string | Int32Array), b: (string | Int32Array)): boolean {
+    if (a.length != b.length) {
+        return false;
+    }
+    for (let i = 0; i < a.length; i += 1) {
+        const a_val = a[i] as string
+        const b_val = b[i] as string
+        if (a_val != b_val) {
+            return false;
+        }
+    }
+    return true;
+}
+function exhaust_entity_info<Prop>(
+    queue: [Prop, number][], 
+    entity_gener: (info: [Prop, number]) => JSX.Element, 
+    render_dump: JSX.Element[])
+{
+    while (queue.length > 0) {
+        const info_index = queue.pop() as [Prop, number]
+        const entity = entity_gener(info_index)
+        const [_, index] = info_index
 
-            if (dataIndex < ptRender.length) {
-                ptRender[dataIndex] = newEntity
-            } else {
-                ptRender.push(newEntity)
-            }
+        if (index < render_dump.length) {
+            render_dump[index] = entity
+        } else {
+            render_dump.fill(<group></group>, render_dump.length, index)
+            render_dump.push(entity)
+        }
+    }
+}
+function gen_new_hashes<Prop>(props: Prop[]) {
+    return props.map((prop) => {
+        const hash = new Md5()
+        hash.start()
+        hash.appendStr(JSON.stringify(prop))
+        return hash.end() || ""
+    }) || []
+}
+function updated_props<Prop>(
+    new_hashes: (string | Int32Array)[], 
+    old_hashes: React.MutableRefObject<(string | Int32Array)[]>, 
+    props: Prop[],
+    )
+{
+    const updated_indices = new_hashes.map((hash, i) => [hash, i] as [(string | Int32Array), number])
+        .filter(([new_hash, i]) => {
+            const old_hash = old_hashes.current[i] || ""
+            return !hash_equals(new_hash, old_hash)
         })
-        setptRender(ptRender)
-        setcount(xypts.length)
+    console.log('szie of penis?', updated_indices.length)
+    return updated_indices.map(([_, i]) => [props[i], i] as [Prop, number])
+}
+function rerender_updated<Prop>(
+    props: Prop[], 
+    old_hashes: React.MutableRefObject<(string | Int32Array)[]>, 
+    entity_gener: (prop_w_index: [Prop, number]) => JSX.Element,
+    entities: JSX.Element[] )
+{
+    const new_hashes = gen_new_hashes(props)
+    const updated = updated_props(new_hashes, old_hashes, props)
+    console.log('new vs updated poo -', new_hashes.length, updated.length)
+    exhaust_entity_info(updated, entity_gener, entities)
+    old_hashes.current = new_hashes
+}
+
+function BasicFunc(props: {
+    trig: boolean, 
+    settrig: any, 
+    ptprops: PtProp[], 
+    setptprops: any, 
+    meshes: CylProp[],
+    setmeshes: any,
+    ptRad: number, 
+    lineRad: number, 
+    scale: Vec2Fixed, 
+    end:number } ) 
+{
+    const ptRender = useRef([] as JSX.Element[])
+    const pt_props_hash = useRef([] as (string | Int32Array)[])
+    const pt_gener = useMemo(() => (ptprop_w_index: [PtProp, number]) => {
+        const [ptprop, index] = ptprop_w_index
+        return (
+            <group position={[0,0,0]} key={index}>
+                <mesh position={[...ptprop.pos, 0]}>
+                    <sphereGeometry args={[props.ptRad, 32,32,32]} />
+                    <meshBasicMaterial color="rgb(210,100,120)"></meshBasicMaterial>
+                </mesh>
+            </group>
+        )
+    }, [])
+    const meshRender = useRef([] as JSX.Element[])
+    const mesh_props_hash = useRef([] as (string | Int32Array)[])
+    const mesh_gener = useMemo(() => (meshprop_w_index: [CylProp, number]) => {
+        const [meshprop, index] = meshprop_w_index
+        return (
+            <group 
+                position={meshprop.pos} 
+                key={index}>
+                <mesh rotation={new THREE.Euler(...meshprop.euler)} castShadow>
+                    <cylinderBufferGeometry 
+                        args={[props.lineRad, props.lineRad, meshprop.len, 16]} />
+                    <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
+                </mesh>
+            </group>
+        )
+    }, [])
+    useEffect(() => {
+        const ptprops = props.ptprops
+        rerender_updated(ptprops, pt_props_hash, pt_gener, ptRender.current)
+        const meshprops = props.meshes
+        rerender_updated(meshprops, mesh_props_hash, mesh_gener, meshRender.current)
+
         props.settrig(false)
     }, [props.trig])
 
-    // cyl mesh gen code
-    // const bodySeg = !!cylProp ?
-            // (
-            //     <group position={cylProp.pos} key={dataIndex}>
-            //         <mesh rotation={new THREE.Euler(0, 0, cylProp.slopeAngle)} castShadow>
-            //             <cylinderBufferGeometry 
-            //                 args={[props.lineRad, props.lineRad, cylProp.len ,16]} />
-            //             <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
-            //         </mesh>
-            //     </group>
-            // ) : null
-
     return (
         <group>
-            {ptRender}
+            <group>{ptRender.current}</group>
+            <group>{meshRender.current}</group>
         </group>
     )
 }

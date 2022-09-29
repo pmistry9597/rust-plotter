@@ -17,6 +17,13 @@ pub fn get_ptprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> PtPr
         chartproc_state.lock().await.pt_props[i]
     })
 }
+#[tauri::command]
+pub fn get_meshprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> CylProp {
+    tauri::async_runtime::block_on(async {
+        let i: usize = i.try_into().unwrap();
+        chartproc_state.lock().await.mesh_props[i]
+    })
+}
 
 pub struct ChartProc {
     srcs: Vec<RlData>,
@@ -54,22 +61,38 @@ where
         // process section
         let scale: Vec2 = [3.0, 2.0];
         let new_ptprops_iter = gen_ptprops_iter(data_chunk_iter.clone(), scale);
-        let new_meshprops_iter = gen_meshprops_iter(new_ptprops_iter.clone(), [5.0,5.0]);
 
         let mut chartproc = chartproc_state.lock().await;
+        let prev_pt_count = chartproc.pt_props.len();
 
         chartproc.srcs.extend(data_chunk_iter);
         chartproc.pt_props.extend(new_ptprops_iter.clone());
-        // chartproc.mesh_props.extend(new_meshprops_iter.clone());
 
+        let pt_props = &chartproc.pt_props;
+        let pts_for_mesh: Vec<PtProp> = get_pts_for_mesh(pt_props, prev_pt_count); // get slice for mesh processing
+        let new_meshprops_iter = gen_meshprops_iter(pts_for_mesh.into_iter(), [1.0, 1.0]);
+
+        chartproc.mesh_props.extend(new_meshprops_iter.clone());
+        
         // notify frontend
-        let pt_count = chartproc.pt_props.len();
-        notify_new_data("pt_update", (pt_count-new_ptprops_iter.count())..pt_count
-            , &chartproc.window);
-        // notify_new_data("mesh_update", new_meshprops_iter, &chartproc.mesh_props, &chartproc.window);
+        notify_new_data("pt_update", 
+            new_index_iter(new_ptprops_iter.count(), chartproc.pt_props.len()), 
+            &chartproc.window);
+        notify_new_data("mesh_update", 
+            new_index_iter(new_meshprops_iter.count(), chartproc.mesh_props.len()), 
+            &chartproc.window);
     }
 }
 
+fn get_pts_for_mesh(pt_props: &Vec<PtProp>, prev_pt_count: usize) -> Vec<PtProp> {
+    if prev_pt_count == 0 {
+        return vec![];
+    }
+    pt_props[prev_pt_count - 1..].iter().map(|pt_ref| pt_ref.clone()).collect()
+}
+fn new_index_iter(added_count: usize, count: usize) -> impl Iterator<Item = usize> + Clone {
+    (count - added_count)..count
+}
 fn notify_new_data<I>(name: &str, new_index_iter: I, window: &Window)
 where
     I: Iterator<Item = usize> + Clone,
