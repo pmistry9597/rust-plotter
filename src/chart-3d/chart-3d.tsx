@@ -7,7 +7,6 @@ import { PerspectiveCamera } from "@react-three/drei";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { BlckInfo, CylProp, PtProp } from "../model/backend-comm";
-import { Md5 } from "ts-md5"
 import { rerender_updated } from "./rendering";
 
 export function Chart3d() {
@@ -21,19 +20,16 @@ export function Chart3d() {
     }, [])
 
     const [trig, settrig] = useState(false)
-    const scale: [number, number] = [1.0, 1.0]
 
     return (
         <>
             <Canvas dpr={[2,1]}>
-                <TimedStream
+                <BackendEndpoint
                         settrig={settrig} 
                         setptprops={setptprops} 
                         setmeshes={setmeshes}
-                        scale={scale} 
-                        camRef={camRef} 
-                        end={end} 
                     />
+                <CamTrack camRef={camRef} ptprops={ptprops} />
                 <CamControl setCamRef={setCamRefHandle} />
                 <AxesElem 
                     ranges={[[-4,end],[-4,4],[-4,4]]} 
@@ -49,8 +45,7 @@ export function Chart3d() {
                         meshes={meshes}
                         setmeshes={setmeshes}
                         ptRad={0.1} 
-                        lineRad={0.04} 
-                        scale={scale}
+                        lineRad={0.04}
                         end={end} />
                 </Scaler>
                 <EffectComposer>
@@ -65,27 +60,16 @@ export function Chart3d() {
     )
 }
 
-function TimedStream(props: {
-    settrig: any, 
-    scale: [number, number], 
+function CamTrack(props: {
     camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null,
-    setptprops: any, 
-    end: number,
-    setmeshes: any,
-}) 
+    ptprops: PtProp[],
+})
 {
-    const { setptprops, camRef, setmeshes } = props
-
-    const ptprops_ref = useRef([] as PtProp[])
-    setptprops(ptprops_ref.current)
-    const meshes_ref = useRef([] as CylProp[])
-    setmeshes(meshes_ref.current)
-
+    const { camRef, ptprops } = props
     const [timer, setTimer] = useState(0)
-    const [camTimer, setCamTimer] = useState(0)
     const [camDate, setCamDate] = useState(false)
+    const [camTimer, setCamTimer] = useState(0)
 
-    // below are timed shits
     useFrame((_state, delta) => {
         setTimer(timer + delta)
         setCamTimer(camTimer + delta)
@@ -94,50 +78,14 @@ function TimedStream(props: {
             setCamTimer(0)
         }
     })
-    // three js wont work with tauri on my setup without following for whatever reason
-    const useless_three_js = useThree()
-    useEffect(() => {
-        setInterval(() => {
-            useless_three_js.advance(0)
-        }, 2)
-    }, [])
-    
-    const [recentPt, setRecentPt] = useState([0,0] as Vec2Fixed)
-    // data injection
-    useEffect(() => {
-        listen("pt_update", (event: any) => {
-            const payload: BlckInfo = event.payload;
-            const i = payload.index
-            invoke("get_ptprop", {i}).then((ptprop_val) => {
-                const ptprop = ptprop_val as PtProp
-                ptprops_ref.current.push(ptprop)
-                setRecentPt(ptprop.pos)
-
-                props.settrig(true)
-            }).catch((reason) => {
-                console.log("huh retrieving didn't work when sent?: ",  reason)
-            })
-        })
-        listen("mesh_update", (event: any) => {
-            const payload: BlckInfo = event.payload
-            const i = payload.index
-            invoke("get_meshprop", {i}).then((meshprop_val) => {
-                const meshprop = meshprop_val as CylProp
-                meshes_ref.current.push(meshprop)
-
-                props.settrig(true)
-            })
-        })
-      }, [])
-
-    // precursor to camera tracking routine
     const [currCam, setCamCurr] = useState([0,0,0])
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
     const cam_displace = new THREE.Vector3(10,10,10)
-    // cam_displace.multiplyScalar(4)
+    const recentx_pt = ptprops.at(-1)?.pos[0]
+
     useFrame((_state, delta) => {
-        const idealCam = (new THREE.Vector3(recentPt[0], 0, 0)).add(cam_displace)
+        const idealCam = (new THREE.Vector3(recentx_pt, 0, 0)).add(cam_displace)
         const camVec = new THREE.Vector3(...currCam)
         const diff2Ideal = idealCam.sub(camVec)
 
@@ -155,6 +103,56 @@ function TimedStream(props: {
         camRef?.current?.lookAt(camRef?.current?.position.clone().sub(cam_displace))
         setCamDate(false)
     }, [camDate])
+
+    return <></>
+}
+
+function BackendEndpoint(props: {
+    settrig: any,
+    setptprops: any,
+    setmeshes: any,
+}) 
+{
+    const { setptprops, setmeshes } = props
+
+    const ptprops_ref = useRef([] as PtProp[])
+    setptprops(ptprops_ref.current)
+    const meshes_ref = useRef([] as CylProp[])
+    setmeshes(meshes_ref.current)
+
+    // three js wont work with tauri on my setup without following for whatever reason
+    const useless_three_js = useThree()
+    useEffect(() => {
+        setInterval(() => {
+            useless_three_js.advance(0)
+        }, 2)
+    }, [])
+
+    useEffect(() => {
+        listen("pt_update", (event: any) => {
+            const payload: BlckInfo = event.payload;
+            const i = payload.index
+            invoke("get_ptprop", {i}).then((ptprop_val) => {
+                const ptprop = ptprop_val as PtProp
+                ptprops_ref.current.push(ptprop)
+                props.settrig(true)
+            }).catch((reason) => {
+                console.log("huh retrieving didn't work when sent?: ",  reason)
+            })
+        })
+        listen("mesh_update", (event: any) => {
+            const payload: BlckInfo = event.payload
+            const i = payload.index
+            invoke("get_meshprop", {i}).then((meshprop_val) => {
+                const meshprop = meshprop_val as CylProp
+                meshes_ref.current.push(meshprop)
+                props.settrig(true)
+            })
+        })
+        invoke("ready").then(() => {
+            console.log("readied up eh?")
+        })
+      }, [])
 
     return <></>
 }
@@ -186,8 +184,7 @@ function BasicFunc(props: {
     meshes: CylProp[],
     setmeshes: any,
     ptRad: number, 
-    lineRad: number, 
-    scale: Vec2Fixed, 
+    lineRad: number,
     end:number } ) 
 {
     const ptRender = useRef([] as JSX.Element[])

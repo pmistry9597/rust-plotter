@@ -43,7 +43,7 @@ impl ChartProc {
     }
 }
 
-pub async fn src_chunk_worker<F, const CHUNK_SIZE: usize>(app: AppHandle, get_rl: impl Fn() -> F)
+pub async fn src_worker<F, const CHUNK_SIZE: usize>(app: AppHandle, get_rl: impl Fn() -> F)
 where
     F: Future<Output = Option<RlDataOpChunk<CHUNK_SIZE>>>
 {
@@ -55,8 +55,8 @@ where
         }
         let data_chunk = data_chunk_op.expect("you're in a bit of a pickle here");
         let data_chunk_iter = data_chunk.iter()
-        .filter(|x| x.is_some())
-        .map(|x| x.unwrap());
+            .filter(|x| x.is_some())
+            .map(|x| x.unwrap());
 
         // process section
         let scale: Vec2 = [3.0, 2.0];
@@ -74,16 +74,24 @@ where
 
         chartproc.mesh_props.extend(new_meshprops_iter.clone());
         
-        // notify frontend
-        notify_new_data("pt_update", 
-            new_index_iter(new_ptprops_iter.count(), chartproc.pt_props.len()), 
-            &chartproc.window);
-        notify_new_data("mesh_update", 
-            new_index_iter(new_meshprops_iter.count(), chartproc.mesh_props.len()), 
-            &chartproc.window);
+        // notify concerned parties?
+        notify_new_chartproc(new_ptprops_iter, new_meshprops_iter, &chartproc);
     }
 }
 
+fn notify_new_chartproc<PtIter, MeshIter>(
+    new_ptprops_iter: PtIter, new_meshprops_iter: MeshIter, chartproc: &ChartProc)
+where
+    PtIter: Iterator<Item = PtProp> + Clone,
+    MeshIter: Iterator<Item = CylProp> + Clone,
+{
+    notify_new_data("pt_update", 
+        new_index_iter(new_ptprops_iter.count(), chartproc.pt_props.len()), 
+        &chartproc.window);
+    notify_new_data("mesh_update", 
+        new_index_iter(new_meshprops_iter.count(), chartproc.mesh_props.len()), 
+        &chartproc.window);
+}
 fn get_pts_for_mesh(pt_props: &Vec<PtProp>, prev_pt_count: usize) -> Vec<PtProp> {
     if prev_pt_count == 0 {
         return vec![];
