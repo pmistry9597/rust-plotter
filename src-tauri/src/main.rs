@@ -56,9 +56,13 @@ async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::Rl
   let yfunc = f32::sin;
   let curr_chunk_vec: Vec<Vec2> = (0..count).map(
     move |i| {
-      let mut rand_cum: StdRng = rand::SeedableRng::from_entropy();
+      // let mut rand_cum: StdRng = rand::SeedableRng::from_entropy();
       let x = i as f32 * interv;
-      [x + rand_cum.gen_range(0..2) as f32 * 0.3, yfunc(x) + rand_cum.gen_range(0..2) as f32 * 0.3] as chart_types::Vec2
+      [x //+ rand_cum.gen_range(0..2) 
+         as f32 * 0.3, 
+        yfunc(x) //+ rand_cum.gen_range(0..2)
+         as f32 * 0.3
+      ] as chart_types::Vec2
       // [x, yfunc(x)] as chart_types::Vec2
     }).collect();
   let mut curr_chunk_iter = curr_chunk_vec.chunks(N);

@@ -1,11 +1,11 @@
 use std::mem;
 
-pub trait SingleConsume<T> {
+pub trait Consume<T> {
     fn try_consume(self: &mut Self) -> Option<T>;
 }
 
 pub struct SingleConsumable<T> (Option<T>);
-impl<T> SingleConsume<T> for SingleConsumable<T> {
+impl<T> Consume<T> for SingleConsumable<T> {
     fn try_consume(self: &mut Self) -> Option<T> {
         let consum = &mut self.0;
         match consum {

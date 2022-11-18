@@ -1,0 +1,13 @@
+#main {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background: radial-gradient(rgba(30, 30, 30, 1) 0%, rgba(30, 30, 30, 0) 90%);
+    backdrop-filter: blur(10px);
+}

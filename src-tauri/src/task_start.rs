@@ -1,4 +1,4 @@
-use crate::single_consumable::{SingleConsume, SingleConsumable};
+use crate::single_consumable::{Consume, SingleConsumable};
 use tauri::{State, async_runtime};
 use std::pin::Pin;
 use futures::Future;
