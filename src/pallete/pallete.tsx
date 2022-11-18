@@ -12,9 +12,7 @@ export function Pallete(props: {
         height: props.diam
     }
     const icons = props.iconDescriptor.map((prop, i) => {
-        if (i == 0) {
-            prop.marginAdjust = `-${(i) * 100}%`
-        }
+        // prop.marginAdjust = `-${(i) * 100}%`
         return Icon(prop)
     })
     const root = icons[0]
