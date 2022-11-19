@@ -3,6 +3,8 @@ export interface IconProps {
     src: string, 
     theta?: number, 
     rad_f?: number, 
+
     rad_total?: string,
-    marginAdjust?: string,
+    displayed?: boolean,
+    triggerEvent?: () => void,
 }
