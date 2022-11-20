@@ -5,12 +5,11 @@ import { IconProps } from './model/icon-props';
 import { Pallete } from './pallete/pallete';
 
 function App() {
-  const icons: IconProps[] = [
+  const insights_icons: IconProps[] = [
     {src: "/icon/bulb.svg", diam: '35px'},
-    {src: "/icon/wand.svg", diam: '35px', theta: 0.9, rad_f: 0.5},
-    {src: "/icon/wand.svg", diam: '35px', theta: 0.45, rad_f: 0.5},
-    {src: "/icon/bulb.svg", diam: '35px', theta: -0.9, rad_f: 0.5},
-    {src: "/icon/wand.svg", diam: '35px', theta: 2.2, rad_f: 0.8},
+    {src: "/icon/wand.svg", diam: '35px', theta: -3.14 * 0.4, rad_f: 0.8},
+    {src: "/icon/stats.svg", diam: '35px', theta: -3.14 * 0.1, rad_f: 0.8},
+    {src: "/icon/fourier.svg", diam: '35px', theta: 3.14 * 0.2, rad_f: 0.8},
   ]
 
   return (
@@ -18,10 +17,10 @@ function App() {
       <div id="chart" className='full-fill'>
         <Chart3d></Chart3d>
       </div>
-      <div id="testpallete">
+      <div id="insights">
         <Pallete 
-          iconDescriptor={icons}
-          diam='600px' />
+          iconDescriptor={insights_icons}
+          diam='150px' />
       </div>
     </div>
   );

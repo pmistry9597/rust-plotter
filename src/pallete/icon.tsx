@@ -16,7 +16,7 @@ export function Icon(props: IconProps) {
         borderRadius: "50%",
         zIndex: 4,
         cursor: "pointer",
-        transition: `transform ${sec_trans}s, box-shadow ${sec_trans}s`,
+        transition: `transform ${sec_trans}s, box-shadow ${sec_trans}s, opacity ${sec_trans}s`,
     }
     const [doneContract, setDoneContract] = useState(true)
     const [contractTimer, setContractTimer]: [NodeJS.Timeout | null, any] = useState(null)
@@ -51,6 +51,7 @@ function handleExpansion(
     if (displayed) {
         style.transform = `translate(${x_val}, ${y_val})`
         style.visibility = "visible"
+        style.opacity = 1.0
 
         if (doneContract) {
             setDoneContract(false)
@@ -60,6 +61,7 @@ function handleExpansion(
             setContractTimer(null)
         }
     } else {
+        style.opacity = 0
         if (doneContract) {
             style.visibility = "hidden"
         } else {

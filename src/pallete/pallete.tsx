@@ -26,9 +26,11 @@ export function Pallete(props: {
         }
         prop.displayed = expanded
         prop.sec_trans = sec_trans
-        prop.activColor = "orange"
-        const [rad, unit] = get_quant_unit(props.diam)
-        prop.rad_total = (rad * 0.5).toString() + unit
+        if (!prop.activColor) {
+            prop.activColor = "orange"
+        }
+        const [diam, unit] = get_quant_unit(props.diam)
+        prop.rad_total = diam.toString() + unit
         handleRootCase(style, prop, i, expanded, setExpanded, sec_trans)
 
         return <div key={i} style={style}>{Icon(prop)}</div>

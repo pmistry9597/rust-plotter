@@ -16,12 +16,10 @@
   width: 100%;
 }
 
-#testpallete {
-  z-index: 2;
+#insights {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  left: 0%;
+  bottom: 150px;
   display: flex;
   justify-content: center;
   align-items: center;

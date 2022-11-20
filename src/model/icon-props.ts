@@ -1,8 +1,8 @@
 export interface IconProps {
-    diam: string, 
-    src: string, 
-    theta?: number, 
-    rad_f?: number, 
+    diam: string,
+    src: string,
+    theta?: number,
+    rad_f?: number,
     activColor?: string,
     sec_trans?: number,
 
