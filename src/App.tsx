@@ -7,10 +7,10 @@ import { Pallete } from './pallete/pallete';
 function App() {
   const icons: IconProps[] = [
     {src: "/icon/bulb.svg", diam: '35px'},
-    {src: "/icon/wand.svg", diam: '35px', rad_total: '10em', theta: 0.9, rad_f: 0.5},
-    {src: "/icon/wand.svg", diam: '35px', rad_total: '10em', theta: 0.45, rad_f: 0.5},
-    {src: "/icon/bulb.svg", diam: '35px', rad_total: '10em', theta: -0.9, rad_f: 0.5},
-    {src: "/icon/wand.svg", diam: '35px', rad_total: '10em', theta: 2.2, rad_f: 0.8},
+    {src: "/icon/wand.svg", diam: '35px', theta: 0.9, rad_f: 0.5},
+    {src: "/icon/wand.svg", diam: '35px', theta: 0.45, rad_f: 0.5},
+    {src: "/icon/bulb.svg", diam: '35px', theta: -0.9, rad_f: 0.5},
+    {src: "/icon/wand.svg", diam: '35px', theta: 2.2, rad_f: 0.8},
   ]
 
   return (
@@ -21,7 +21,7 @@ function App() {
       <div id="testpallete">
         <Pallete 
           iconDescriptor={icons}
-          diam='300px' />
+          diam='600px' />
       </div>
     </div>
   );
