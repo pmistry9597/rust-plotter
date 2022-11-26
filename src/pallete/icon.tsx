@@ -5,7 +5,6 @@ import { get_quant_unit } from "../tools/get_quant_unit";
 export function Icon(props: IconProps) {
     const sec_trans = props.sec_trans || 0.5
     const [rad, unit] = get_quant_unit(props.rad_total || "")
-
     const x_val = (rad * (props.rad_f || 0) * Math.cos(props.theta || Math.PI / 2)).toString() + (unit || "")
     const y_val = (rad * (props.rad_f || 0) * Math.sin(props.theta || 0)).toString() + (unit || "")
     const style: React.CSSProperties = {

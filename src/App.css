@@ -24,3 +24,21 @@
   justify-content: center;
   align-items: center;
 }
+
+#view {
+  position: absolute;
+  right: 150px;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#signal {
+  position: absolute;
+  right: 0;
+  top: 150px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
