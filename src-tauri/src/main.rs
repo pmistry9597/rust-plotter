@@ -10,7 +10,7 @@ use chart::{types as chart_types, ChartProc, src_worker};
 use tauri::{async_runtime, Manager, generate_handler};
 use rand::rngs::StdRng;
 use rand::Rng;
-use chart::{get_ptprop, get_meshprop};
+use chart::{get_ptprop, get_cylprop};
 use task_start::{ready, Task, get_tasklist};
 
 fn main() {
@@ -39,7 +39,7 @@ fn main() {
     })
     .invoke_handler(generate_handler![
       get_ptprop,
-      get_meshprop,
+      get_cylprop,
       ready,
     ])
     .run(tauri::generate_context!())

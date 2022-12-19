@@ -13,7 +13,7 @@ import { AxesElem, Scaler } from "./elems";
 export function Chart3d() {
     const end = 40
     const [ptprops, setptprops] = useState([] as PtProp[])
-    const [meshes, setmeshes] = useState([] as CylProp[])
+    const [cyls, setcyls] = useState([] as CylProp[])
     const [camRef, setCamRef] = useState<React.MutableRefObject<THREE.PerspectiveCamera | null> | null>(null)
 
     const setCamRefHandle = useMemo(() => {
@@ -28,23 +28,24 @@ export function Chart3d() {
                 <BackendEndpoint
                         settrig={settrig} 
                         setptprops={setptprops} 
-                        setmeshes={setmeshes}
+                        setcyls={setcyls}
                     />
+                <Threejs_fix />
                 <CamTrack camRef={camRef} ptprops={ptprops} />
-                <CamControl setCamRef={setCamRefHandle} />
+                <CamInstall setCamRef={setCamRefHandle} />
                 <AxesElem 
                     ranges={[[-4,end],[-4,4],[-4,4]]} 
                     rad={0.1} 
                     arrowDim={{wd: 0.2, hght: 0.4}} 
                 />
                 <Scaler scaling={[1,1,1]}>
-                    <BasicFunc
+                    <Graph1D
                         trig={trig} 
                         settrig={settrig} 
                         ptprops={ptprops} 
                         setptprops={setptprops} 
-                        meshes={meshes}
-                        setmeshes={setmeshes}
+                        cyls={cyls}
+                        setcyls={setcyls}
                         ptRad={0.1} 
                         lineRad={0.04}
                         end={end} />
@@ -108,19 +109,7 @@ function CamTrack(props: {
     return <></>
 }
 
-function BackendEndpoint(props: {
-    settrig: any,
-    setptprops: any,
-    setmeshes: any,
-}) 
-{
-    const { setptprops, setmeshes } = props
-
-    const ptprops_ref = useRef([] as PtProp[])
-    setptprops(ptprops_ref.current)
-    const meshes_ref = useRef([] as CylProp[])
-    setmeshes(meshes_ref.current)
-
+function Threejs_fix() {
     // three js wont work with tauri on my setup without following for whatever reason
     const useless_three_js = useThree()
     useEffect(() => {
@@ -128,6 +117,21 @@ function BackendEndpoint(props: {
             useless_three_js.advance(0)
         }, 2)
     }, [])
+
+    return <></>
+}
+
+function BackendEndpoint(props: {
+    settrig: any,
+    setptprops: any,
+    setcyls: any,
+}) 
+{
+    const { setptprops, setcyls } = props
+    const ptprops_ref = useRef([] as PtProp[])
+    setptprops(ptprops_ref.current)
+    const cyles_ref = useRef([] as CylProp[])
+    setcyls(cyles_ref.current)
 
     useEffect(() => {
         listen("pt_update", (event: any) => {
@@ -141,12 +145,12 @@ function BackendEndpoint(props: {
                 console.log("huh retrieving didn't work when sent?: ",  reason)
             })
         })
-        listen("mesh_update", (event: any) => {
+        listen("cyl_update", (event: any) => {
             const payload: BlckInfo = event.payload
             const i = payload.index
-            invoke("get_meshprop", {i}).then((meshprop_val) => {
-                const meshprop = meshprop_val as CylProp
-                meshes_ref.current.push(meshprop)
+            invoke("get_cylprop", {i}).then((cylprop_val) => {
+                const cylprop = cylprop_val as CylProp
+                cyles_ref.current.push(cylprop)
                 props.settrig(true)
             })
         })
@@ -158,7 +162,7 @@ function BackendEndpoint(props: {
     return <></>
 }
 
-function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
+function CamInstall(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
     const camR: React.MutableRefObject<THREE.PerspectiveCamera | null> = useRef(null)
 
     useEffect(() => {
@@ -177,16 +181,16 @@ function CamControl(props: {setCamRef: (camRef: React.MutableRefObject<THREE.Per
     )
 }
 
-function BasicFunc(props: {
+function Graph1D(props: {
     trig: boolean, 
     settrig: any, 
     ptprops: PtProp[], 
     setptprops: any, 
-    meshes: CylProp[],
-    setmeshes: any,
+    cyls: CylProp[],
+    setcyls: any,
     ptRad: number, 
     lineRad: number,
-    end:number } ) 
+    end: number } ) 
 {
     const ptRender = useRef([] as JSX.Element[])
     const pt_props_hash = useRef([] as (string | Int32Array)[])
@@ -202,16 +206,16 @@ function BasicFunc(props: {
         )
     }, [])
     const meshRender = useRef([] as JSX.Element[])
-    const mesh_props_hash = useRef([] as (string | Int32Array)[])
-    const mesh_gener = useMemo(() => (meshprop_w_index: [CylProp, number]) => {
-        const [meshprop, index] = meshprop_w_index
+    const cyl_props_hash = useRef([] as (string | Int32Array)[])
+    const mesh_gener = useMemo(() => (cylprop_w_index: [CylProp, number]) => {
+        const [cylprop, index] = cylprop_w_index
         return (
             <group 
-                position={meshprop.pos} 
+                position={cylprop.pos} 
                 key={index}>
-                <mesh rotation={new THREE.Euler(...meshprop.euler)} castShadow>
+                <mesh rotation={new THREE.Euler(...cylprop.euler)} castShadow>
                     <cylinderBufferGeometry 
-                        args={[props.lineRad, props.lineRad, meshprop.len, 16]} />
+                        args={[props.lineRad, props.lineRad, cylprop.len, 16]} />
                     <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
                 </mesh>
             </group>
@@ -220,8 +224,8 @@ function BasicFunc(props: {
     useEffect(() => {
         const ptprops = props.ptprops
         rerender_updated(ptprops, pt_props_hash, pt_gener, ptRender.current)
-        const meshprops = props.meshes
-        rerender_updated(meshprops, mesh_props_hash, mesh_gener, meshRender.current)
+        const cylprops = props.cyls
+        rerender_updated(cylprops, cyl_props_hash, mesh_gener, meshRender.current)
 
         props.settrig(false)
     }, [props.trig])

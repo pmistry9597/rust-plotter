@@ -18,16 +18,16 @@ pub fn get_ptprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> PtPr
     })
 }
 #[tauri::command]
-pub fn get_meshprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> CylProp {
+pub fn get_cylprop(i: i32, chartproc_state: State<Arc<Mutex<ChartProc>>>) -> CylProp {
     tauri::async_runtime::block_on(async {
         let i: usize = i.try_into().unwrap();
-        chartproc_state.lock().await.mesh_props[i]
+        chartproc_state.lock().await.cyl_props[i]
     })
 }
 
 pub struct ChartProc {
     srcs: Vec<RlData>,
-    mesh_props: Vec<CylProp>,
+    cyl_props: Vec<CylProp>,
     pt_props: Vec<PtProp>,
     window: Window,
 }
@@ -36,7 +36,7 @@ impl ChartProc {
     pub fn new(window: Window) -> ChartProc {
         ChartProc{
             srcs: vec![],
-            mesh_props: vec![],
+            cyl_props: vec![],
             pt_props: vec![],
             window,
         }
@@ -69,30 +69,30 @@ where
         chartproc.pt_props.extend(new_ptprops_iter.clone());
 
         let pt_props = &chartproc.pt_props;
-        let pts_for_mesh: Vec<PtProp> = get_pts_for_mesh(pt_props, prev_pt_count); // get slice for mesh processing
-        let new_meshprops_iter = gen_meshprops_iter(pts_for_mesh.into_iter(), [1.0, 1.0]);
+        let pts_for_cyl: Vec<PtProp> = get_pts_for_cyl(pt_props, prev_pt_count); // get slice for cyl processing
+        let new_cylprops_iter = gen_cylprops_iter(pts_for_cyl.into_iter(), [1.0, 1.0]);
 
-        chartproc.mesh_props.extend(new_meshprops_iter.clone());
+        chartproc.cyl_props.extend(new_cylprops_iter.clone());
         
         // notify concerned parties?
-        notify_new_chartproc(new_ptprops_iter, new_meshprops_iter, &chartproc);
+        notify_new_chartproc(new_ptprops_iter, new_cylprops_iter, &chartproc);
     }
 }
 
-fn notify_new_chartproc<PtIter, MeshIter>(
-    new_ptprops_iter: PtIter, new_meshprops_iter: MeshIter, chartproc: &ChartProc)
+fn notify_new_chartproc<PtIter, CylIter>(
+    new_ptprops_iter: PtIter, new_cylprops_iter: CylIter, chartproc: &ChartProc)
 where
     PtIter: Iterator<Item = PtProp> + Clone,
-    MeshIter: Iterator<Item = CylProp> + Clone,
+    CylIter: Iterator<Item = CylProp> + Clone,
 {
     notify_new_data("pt_update", 
         new_index_iter(new_ptprops_iter.count(), chartproc.pt_props.len()), 
         &chartproc.window);
-    notify_new_data("mesh_update", 
-        new_index_iter(new_meshprops_iter.count(), chartproc.mesh_props.len()), 
+    notify_new_data("cyl_update", 
+        new_index_iter(new_cylprops_iter.count(), chartproc.cyl_props.len()), 
         &chartproc.window);
 }
-fn get_pts_for_mesh(pt_props: &Vec<PtProp>, prev_pt_count: usize) -> Vec<PtProp> {
+fn get_pts_for_cyl(pt_props: &Vec<PtProp>, prev_pt_count: usize) -> Vec<PtProp> {
     if prev_pt_count == 0 {
         return vec![];
     }

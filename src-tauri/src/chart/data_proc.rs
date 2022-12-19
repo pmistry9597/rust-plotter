@@ -4,7 +4,7 @@ use super::types::*;
 
 type TupVec2 = (f32, f32);
 
-pub fn gen_meshprops_iter<PtPropIter>(ptprop_iter: PtPropIter, scale: Vec2) -> impl Iterator<Item = CylProp> + Clone
+pub fn gen_cylprops_iter<PtPropIter>(ptprop_iter: PtPropIter, scale: Vec2) -> impl Iterator<Item = CylProp> + Clone
 where
     PtPropIter: Iterator<Item = PtProp> + Clone,
 {
