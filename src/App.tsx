@@ -45,7 +45,7 @@ function App() {
         >
         <Chart3d 
           setControlHandler={setControlHandler}
-          setInfo={setInfoRef.current} />
+          setInfoRef={setInfoRef} />
       </div>
       <div id="display">
         <InfoDisplay setInfoSetter={setInfoSetter} />

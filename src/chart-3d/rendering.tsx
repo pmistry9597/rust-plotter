@@ -31,8 +31,8 @@ function exhaust_entity_info<Prop>(
 {
     while (queue.length > 0) {
         const info_index = queue.pop() as [Prop, number]
-        const entity = entity_gener(info_index)
         const [_, index] = info_index
+        const entity = entity_gener(info_index)
 
         if (index < render_dump.length) {
             render_dump[index] = entity

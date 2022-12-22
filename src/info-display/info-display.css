@@ -1,6 +1,6 @@
 #main {
     width: 200px;
-    height: 200px;
+    min-height: 80px;
     border-radius: 10px;
     border: solid white 2px;
     padding: 10px;

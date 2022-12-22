@@ -2,7 +2,6 @@ import React, { KeyboardEvent, MouseEvent, useEffect, useMemo, useRef, useState 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from 'three';
 import { Vec3Fixed, Vec2Fixed, PolarCoord3D } from "../model/three-helpers";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -14,7 +13,7 @@ import { clamp } from "../tools/clamp";
 
 export function Chart3d(props: {
     setControlHandler: (handlers: ControlHandlers) => void,
-    setInfo: (header: string, contents: string[]) => void,
+    setInfoRef: React.MutableRefObject<(header: string, contents: string[]) => void>,
 }) {
     const end = 40
     const [ptprops, setptprops] = useState([] as PtProp[])
@@ -65,15 +64,8 @@ export function Chart3d(props: {
                         ptRad={0.1} 
                         lineRad={0.04}
                         end={end}
-                        setInfo={props.setInfo} />
+                        setInfoRef={props.setInfoRef} />
                 </Scaler>
-                <EffectComposer>
-                    <Bloom
-                        intensity={1}
-                        luminanceThreshold={0}
-                        luminanceSmoothing={0.6}
-                    />
-                </EffectComposer>
             </Canvas>
         </>
     )
@@ -260,17 +252,28 @@ function CamSetup(props: {setCamRef: (camRef: React.MutableRefObject<THREE.Persp
     )
 }
 
-function Point(props: {ptprop_w_index: [PtProp, number], rad: number, setInfo: (header: string, contents: string[]) => void}) {
-    const {ptprop_w_index, rad, setInfo} = props
+function Point(props: {ptprop_w_index: [PtProp, number], 
+    rad: number, 
+    setInfoRef: React.MutableRefObject<(header: string, contents: string[]) => void>,
+    addColorSetter: (set: (col: string) => void) => void,
+    resetColor: () => void,
+}) {
+    const {ptprop_w_index, rad, setInfoRef, addColorSetter, resetColor} = props
     const [ptprop, index] = ptprop_w_index
+    const [color, setColor] = useState("rgb(10, 255, 180)")
     const onclick = () => {
-        setInfo("Point Info", [`x: ${ptprop.rl_data.pos[0]}`, `y: ${ptprop.rl_data.pos[1]}`])
+        setInfoRef.current("Point Info", [`x: ${ptprop.rl_data.pos[0]}`, `y: ${ptprop.rl_data.pos[1]}`])
+        resetColor()
+        setColor("rgb(255, 0, 180)")
     }
+    useEffect(() => {
+        addColorSetter(setColor)
+    }, [])
     return (
         <group position={[0,0,0]} key={index}>
             <mesh position={[...ptprop.pos, 0]} onClick={onclick}>
                 <sphereGeometry args={[rad, 32,32,32]} />
-                <meshBasicMaterial color="rgb(50,200,50)"></meshBasicMaterial>
+                <meshBasicMaterial color={color}></meshBasicMaterial>
             </mesh>
         </group>
     )
@@ -286,13 +289,36 @@ function Graph1D(props: {
     ptRad: number, 
     lineRad: number,
     end: number,
-    setInfo: (header: string, contents: string[]) => void,
+    setInfoRef: React.MutableRefObject<(header: string, contents: string[]) => void>,
 }) 
 {
-    const {setInfo} = props
+    const {setInfoRef} = props
     const ptRender = useRef([] as JSX.Element[])
     const pt_props_hash = useRef([] as (string | Int32Array)[])
-    const pt_gener = useMemo(() => (ptprop_w_index: [PtProp, number]) => Point({ptprop_w_index, rad: props.ptRad, setInfo}), [])
+    const ptColorSetters = useRef<((col: string) => void)[]>([])
+    const addPtColorSetter = useMemo(() => {
+        return (colSetter: (col: string) => void) => {
+            ptColorSetters.current.push(colSetter)
+        }
+    }, [])
+    const resetPtColor = useMemo(() => {
+        return () => {
+            ptColorSetters.current.forEach((colSet) => {
+                colSet("rgb(10, 255, 180)")
+            })
+        }
+    }, [])
+    const pt_gener = useMemo(() => (ptprop_w_index: [PtProp, number]) => {
+        const [_, index] = ptprop_w_index
+        return <Point 
+                    ptprop_w_index={ptprop_w_index} 
+                    rad={props.ptRad} 
+                    setInfoRef={setInfoRef}
+                    addColorSetter={addPtColorSetter}
+                    resetColor={resetPtColor}
+                    key={index} />
+        }, 
+        [])
     const meshRender = useRef([] as JSX.Element[])
     const cyl_props_hash = useRef([] as (string | Int32Array)[])
     const mesh_gener = useMemo(() => (cylprop_w_index: [CylProp, number]) => {
