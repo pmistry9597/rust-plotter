@@ -12,7 +12,10 @@ import { AxesElem, Scaler } from "./elems";
 import { ControlHandlers } from "../model/control-handlers";
 import { clamp } from "../tools/clamp";
 
-export function Chart3d(props: {setControlHandler: (handlers: ControlHandlers) => void}) {
+export function Chart3d(props: {
+    setControlHandler: (handlers: ControlHandlers) => void,
+    setInfo: (header: string, contents: string[]) => void,
+}) {
     const end = 40
     const [ptprops, setptprops] = useState([] as PtProp[])
     const [cyls, setcyls] = useState([] as CylProp[])
@@ -23,21 +26,29 @@ export function Chart3d(props: {setControlHandler: (handlers: ControlHandlers) =
     }, [])
 
     const cam_displace = useRef(new THREE.Vector3(20, 20, 20))
+    const cam_focus = useRef(0)
 
     const [trig, settrig] = useState(false)
 
     return (
         <>
             <Canvas dpr={[2,1]}>
-                <CamControl setControlHandler={props.setControlHandler} cam_displace={cam_displace} />
+                <CamControl 
+                    setControlHandler={props.setControlHandler} 
+                    cam_displace={cam_displace}
+                    cam_focus={cam_focus}
+                    ptprops={ptprops} />
                 <BackendEndpoint
                         settrig={settrig} 
                         setptprops={setptprops} 
                         setcyls={setcyls}
                     />
                 <ThreejsFix />
-                <CamTrack camRef={camRef} ptprops={ptprops} displace={cam_displace.current} />
-                <CamInstall setCamRef={setCamRefHandle} />
+                <CamTrack 
+                    camRef={camRef} 
+                    x_target={cam_focus} 
+                    displace={cam_displace.current} />
+                <CamSetup setCamRef={setCamRefHandle} />
                 <AxesElem 
                     ranges={[[-4,end],[-4,4],[-4,4]]} 
                     rad={0.1} 
@@ -53,7 +64,8 @@ export function Chart3d(props: {setControlHandler: (handlers: ControlHandlers) =
                         setcyls={setcyls}
                         ptRad={0.1} 
                         lineRad={0.04}
-                        end={end} />
+                        end={end}
+                        setInfo={props.setInfo} />
                 </Scaler>
                 <EffectComposer>
                     <Bloom
@@ -67,11 +79,20 @@ export function Chart3d(props: {setControlHandler: (handlers: ControlHandlers) =
     )
 }
 
-function CamControl(props: {cam_displace: React.MutableRefObject<THREE.Vector3>, setControlHandler: (handlers: ControlHandlers) => void}) {
+function CamControl(props: 
+    {cam_displace: React.MutableRefObject<THREE.Vector3>, 
+    setControlHandler: (handlers: ControlHandlers) => void,
+    cam_focus: React.MutableRefObject<number>,
+    ptprops: PtProp[],}
+) {
     const cam_displace = props.cam_displace
     const dragRef = useRef(false)
     const prevMousePos = useRef<Vec2Fixed | null>(null)
     const cam_polar = useRef<PolarCoord3D>({rad: 20, polar: 1, alpha: 1})
+    const [tracking, setTracking] = useState(true)
+    if (tracking) {
+        props.cam_focus.current = props.ptprops.at(-1)?.pos[0] || 0
+    }
     useEffect(() => {
         const down = () => {dragRef.current = true}
         const up = () => {dragRef.current = false}
@@ -94,11 +115,23 @@ function CamControl(props: {cam_displace: React.MutableRefObject<THREE.Vector3>,
         }
         const keydown = (e: KeyboardEvent) => {
             const old_rad = cam_polar.current.rad
+
             if (e.key === "ArrowDown") {
                 cam_polar.current.rad += 1
             }
             else if (e.key === "ArrowUp") {
                 cam_polar.current.rad += -1
+            }
+            else if (e.key === "ArrowLeft") {
+                setTracking(false)
+                props.cam_focus.current += -1
+            }
+            else if (e.key === "ArrowRight") {
+                setTracking(false)
+                props.cam_focus.current += 1
+            }
+            else if (e.key === "r") {
+                setTracking(true)
             }
             cam_polar.current.rad = clamp(cam_polar.current.rad, 1, Infinity)
             cam_displace.current.multiplyScalar(cam_polar.current.rad / old_rad)
@@ -110,11 +143,11 @@ function CamControl(props: {cam_displace: React.MutableRefObject<THREE.Vector3>,
 
 function CamTrack(props: {
     camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null,
-    ptprops: PtProp[],
+    x_target: React.MutableRefObject<number>,
     displace: THREE.Vector3,
 })
 {
-    const { camRef, ptprops } = props
+    const { camRef, x_target } = props
     const [timer, setTimer] = useState(0)
     const [camDate, setCamDate] = useState(false)
     const [camTimer, setCamTimer] = useState(0)
@@ -131,10 +164,9 @@ function CamTrack(props: {
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
     const cam_displace = props.displace
-    const recentx_pt = ptprops.at(-1)?.pos[0]
 
     useFrame((_state, delta) => {
-        const idealCam = (new THREE.Vector3(recentx_pt, 0, 0)).add(cam_displace)
+        const idealCam = (new THREE.Vector3(x_target.current, 0, 0)).add(cam_displace)
         const camVec = new THREE.Vector3(...currCam)
         const diff2Ideal = idealCam.sub(camVec)
 
@@ -209,7 +241,7 @@ function BackendEndpoint(props: {
     return <></>
 }
 
-function CamInstall(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
+function CamSetup(props: {setCamRef: (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => void}) {
     const camR: React.MutableRefObject<THREE.PerspectiveCamera | null> = useRef(null)
 
     useEffect(() => {
@@ -228,6 +260,22 @@ function CamInstall(props: {setCamRef: (camRef: React.MutableRefObject<THREE.Per
     )
 }
 
+function Point(props: {ptprop_w_index: [PtProp, number], rad: number, setInfo: (header: string, contents: string[]) => void}) {
+    const {ptprop_w_index, rad, setInfo} = props
+    const [ptprop, index] = ptprop_w_index
+    const onclick = () => {
+        setInfo("Point Info", [`x: ${ptprop.rl_data.pos[0]}`, `y: ${ptprop.rl_data.pos[1]}`])
+    }
+    return (
+        <group position={[0,0,0]} key={index}>
+            <mesh position={[...ptprop.pos, 0]} onClick={onclick}>
+                <sphereGeometry args={[rad, 32,32,32]} />
+                <meshBasicMaterial color="rgb(50,200,50)"></meshBasicMaterial>
+            </mesh>
+        </group>
+    )
+}
+
 function Graph1D(props: {
     trig: boolean, 
     settrig: any, 
@@ -237,21 +285,14 @@ function Graph1D(props: {
     setcyls: any,
     ptRad: number, 
     lineRad: number,
-    end: number } ) 
+    end: number,
+    setInfo: (header: string, contents: string[]) => void,
+}) 
 {
+    const {setInfo} = props
     const ptRender = useRef([] as JSX.Element[])
     const pt_props_hash = useRef([] as (string | Int32Array)[])
-    const pt_gener = useMemo(() => (ptprop_w_index: [PtProp, number]) => {
-        const [ptprop, index] = ptprop_w_index
-        return (
-            <group position={[0,0,0]} key={index}>
-                <mesh position={[...ptprop.pos, 0]}>
-                    <sphereGeometry args={[props.ptRad, 32,32,32]} />
-                    <meshBasicMaterial color="rgb(210,100,120)"></meshBasicMaterial>
-                </mesh>
-            </group>
-        )
-    }, [])
+    const pt_gener = useMemo(() => (ptprop_w_index: [PtProp, number]) => Point({ptprop_w_index, rad: props.ptRad, setInfo}), [])
     const meshRender = useRef([] as JSX.Element[])
     const cyl_props_hash = useRef([] as (string | Int32Array)[])
     const mesh_gener = useMemo(() => (cylprop_w_index: [CylProp, number]) => {
@@ -263,7 +304,7 @@ function Graph1D(props: {
                 <mesh rotation={new THREE.Euler(...cylprop.euler)} castShadow>
                     <cylinderBufferGeometry 
                         args={[props.lineRad, props.lineRad, cylprop.len, 16]} />
-                    <meshBasicMaterial color="rgb(100,200,100)"></meshBasicMaterial>
+                    <meshBasicMaterial color="rgb(10,200,200)"></meshBasicMaterial>
                 </mesh>
             </group>
         )

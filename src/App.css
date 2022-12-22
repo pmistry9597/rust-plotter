@@ -16,6 +16,11 @@
   width: 100%;
 }
 
+#display {
+  z-index: 5;
+  height: 200px;
+}
+
 #insights {
   position: absolute;
   left: 0%;
@@ -35,6 +40,7 @@
 }
 
 #signal {
+  z-index: 20;
   position: absolute;
   right: 0;
   top: 150px;

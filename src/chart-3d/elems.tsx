@@ -15,7 +15,7 @@ function AxisLine(props: {len: number, rad: number, arrowDim: {wd: number, hght:
     const body =( 
         <mesh position={[0,0,0]}>
             <cylinderGeometry args={[props.rad, props.rad, props.len, 32]} />
-            <meshBasicMaterial color="rgb(150,0,150)" />
+            <meshBasicMaterial color="rgb(150,0,40)" />
         </mesh>
     )
     const displace = 0.5 * props.len

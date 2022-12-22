@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Chart3d } from './chart-3d/chart-3d'
+import { InfoDisplay } from './info-display/info-display';
 import { ControlHandlers, emptyControlHandlers } from './model/control-handlers';
 import { IconProps } from './model/icon-props';
 import { Pallete } from './pallete/pallete';
@@ -26,6 +27,12 @@ function App() {
     {src: "/icon/cycle.svg", diam: icon_diam, theta: Math.PI * -1.2, rad_f: icon_rad},
   ]
   const [chartControlHandler, setControlHandler] = useState<ControlHandlers>(emptyControlHandlers)
+  const setInfoRef = useRef((header: string, contents: string[]) => {})
+  const setInfoSetter = useMemo<(setInfo: (header: string, contents: string[]) => void) => void>(() => {
+    return (setInfo: (header: string, contents: string[]) => void) => {
+      setInfoRef.current = setInfo
+    }
+  }, [])
 
   return (
     <div className='main'>
@@ -36,7 +43,12 @@ function App() {
         onKeyDown={chartControlHandler.keydown} 
         tabIndex={0}
         >
-        <Chart3d setControlHandler={setControlHandler}></Chart3d>
+        <Chart3d 
+          setControlHandler={setControlHandler}
+          setInfo={setInfoRef.current} />
+      </div>
+      <div id="display">
+        <InfoDisplay setInfoSetter={setInfoSetter} />
       </div>
       <div id="insights">
         <Pallete 
