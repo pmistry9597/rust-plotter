@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './App.css';
 import { Chart3d } from './chart-3d/chart-3d'
+import { ControlHandlers, emptyControlHandlers } from './model/control-handlers';
 import { IconProps } from './model/icon-props';
 import { Pallete } from './pallete/pallete';
 
@@ -24,11 +25,18 @@ function App() {
     {src: "/icon/files.svg", diam: icon_diam, theta: Math.PI * -0.8, rad_f: icon_rad},
     {src: "/icon/cycle.svg", diam: icon_diam, theta: Math.PI * -1.2, rad_f: icon_rad},
   ]
+  const [chartControlHandler, setControlHandler] = useState<ControlHandlers>(emptyControlHandlers)
 
   return (
     <div className='main'>
-      <div id="chart" className='full-fill'>
-        <Chart3d></Chart3d>
+      <div id="chart" className='full-fill' 
+        onMouseDown={chartControlHandler.down} 
+        onMouseUp={chartControlHandler.up} 
+        onMouseMove={chartControlHandler.move}
+        onKeyDown={chartControlHandler.keydown} 
+        tabIndex={0}
+        >
+        <Chart3d setControlHandler={setControlHandler}></Chart3d>
       </div>
       <div id="insights">
         <Pallete 

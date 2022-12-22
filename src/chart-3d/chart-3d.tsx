@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { KeyboardEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from 'three';
-import { Vec3Fixed } from "../model/three-helpers";
+import { Vec3Fixed, Vec2Fixed, PolarCoord3D } from "../model/three-helpers";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { PerspectiveCamera } from "@react-three/drei";
 import { listen } from "@tauri-apps/api/event";
@@ -9,8 +9,10 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { BlckInfo, CylProp, PtProp } from "../model/backend-comm";
 import { rerender_updated } from "./rendering";
 import { AxesElem, Scaler } from "./elems";
+import { ControlHandlers } from "../model/control-handlers";
+import { clamp } from "../tools/clamp";
 
-export function Chart3d() {
+export function Chart3d(props: {setControlHandler: (handlers: ControlHandlers) => void}) {
     const end = 40
     const [ptprops, setptprops] = useState([] as PtProp[])
     const [cyls, setcyls] = useState([] as CylProp[])
@@ -20,18 +22,21 @@ export function Chart3d() {
         return (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => setCamRef(camRef)
     }, [])
 
+    const cam_displace = useRef(new THREE.Vector3(20, 20, 20))
+
     const [trig, settrig] = useState(false)
 
     return (
         <>
             <Canvas dpr={[2,1]}>
+                <CamControl setControlHandler={props.setControlHandler} cam_displace={cam_displace} />
                 <BackendEndpoint
                         settrig={settrig} 
                         setptprops={setptprops} 
                         setcyls={setcyls}
                     />
-                <Threejs_fix />
-                <CamTrack camRef={camRef} ptprops={ptprops} />
+                <ThreejsFix />
+                <CamTrack camRef={camRef} ptprops={ptprops} displace={cam_displace.current} />
                 <CamInstall setCamRef={setCamRefHandle} />
                 <AxesElem 
                     ranges={[[-4,end],[-4,4],[-4,4]]} 
@@ -62,9 +67,51 @@ export function Chart3d() {
     )
 }
 
+function CamControl(props: {cam_displace: React.MutableRefObject<THREE.Vector3>, setControlHandler: (handlers: ControlHandlers) => void}) {
+    const cam_displace = props.cam_displace
+    const dragRef = useRef(false)
+    const prevMousePos = useRef<Vec2Fixed | null>(null)
+    const cam_polar = useRef<PolarCoord3D>({rad: 20, polar: 1, alpha: 1})
+    useEffect(() => {
+        const down = () => {dragRef.current = true}
+        const up = () => {dragRef.current = false}
+        const move = (e: MouseEvent) => {
+            if (!dragRef.current) {
+                return
+            }
+            const mousePos: Vec2Fixed = [e.movementX, e.movementY]
+            const prevPos = prevMousePos.current || mousePos
+            const deltX = -(mousePos[0] - prevPos[0])
+            const deltY = -(mousePos[1] - prevPos[1])
+            const scale = 0.008
+            cam_polar.current.polar += deltY * scale
+            cam_polar.current.alpha += deltX * scale
+            const rad_cos = cam_polar.current.rad * Math.sin(cam_polar.current.polar)
+            cam_displace.current.y = cam_polar.current.rad * Math.cos(cam_polar.current.polar)
+            cam_displace.current.z = rad_cos * Math.cos(cam_polar.current.alpha)
+            cam_displace.current.x = rad_cos * Math.sin(cam_polar.current.alpha)
+            prevMousePos.current = mousePos
+        }
+        const keydown = (e: KeyboardEvent) => {
+            const old_rad = cam_polar.current.rad
+            if (e.key === "ArrowDown") {
+                cam_polar.current.rad += 1
+            }
+            else if (e.key === "ArrowUp") {
+                cam_polar.current.rad += -1
+            }
+            cam_polar.current.rad = clamp(cam_polar.current.rad, 1, Infinity)
+            cam_displace.current.multiplyScalar(cam_polar.current.rad / old_rad)
+        }
+        props.setControlHandler({up, down, move, keydown})
+    }, [])
+    return <></>
+}
+
 function CamTrack(props: {
     camRef: React.MutableRefObject<THREE.PerspectiveCamera | null> | null,
     ptprops: PtProp[],
+    displace: THREE.Vector3,
 })
 {
     const { camRef, ptprops } = props
@@ -83,7 +130,7 @@ function CamTrack(props: {
     const [currCam, setCamCurr] = useState([0,0,0])
     const displaceAlpha = 0.4
     const [displaceAvg, setDisplaceAvg] = useState(new THREE.Vector3(0,0,0))
-    const cam_displace = new THREE.Vector3(10,10,10)
+    const cam_displace = props.displace
     const recentx_pt = ptprops.at(-1)?.pos[0]
 
     useFrame((_state, delta) => {
@@ -109,7 +156,7 @@ function CamTrack(props: {
     return <></>
 }
 
-function Threejs_fix() {
+function ThreejsFix() {
     // three js wont work with tauri on my setup without following for whatever reason
     const useless_three_js = useThree()
     useEffect(() => {
@@ -155,7 +202,7 @@ function BackendEndpoint(props: {
             })
         })
         invoke("ready").then(() => {
-            console.log("readied up eh?")
+            console.log("ready!")
         })
       }, [])
 
