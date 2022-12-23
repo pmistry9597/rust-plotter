@@ -72,7 +72,7 @@ async fn shit_data<const N: usize>(raw_in: async_runtime::Sender<chart_types::Rl
     let chunk_iter = curr_chunk_iter.next().expect("ran out eh?").iter()
     .map(|pt| {
       let mut rand_wumb: StdRng = rand::SeedableRng::from_entropy();
-      let pos_vec: Vec<f32> = pt.iter().chain([rand_wumb.gen::<f32>()].iter()).map(|x| *x).collect();
+      let pos_vec: Vec<f32> = pt.iter().chain([rand_wumb.gen::<f32>() - 0.5].iter()).map(|x| *x).collect();
       let pos: [f32; 3] = pos_vec[0..3].try_into().unwrap();
       chart_types::RlData{pos}
     });

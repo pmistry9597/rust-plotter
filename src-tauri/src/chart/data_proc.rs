@@ -8,14 +8,14 @@ pub fn gen_cylprops_iter<PtPropIter>(ptprop_iter: PtPropIter, scale: Vec3) -> im
 where
     PtPropIter: Iterator<Item = PtProp> + Clone,
 {
-    ptprop_iter.tuple_windows().map(move |(xy, xyfut)| {
-        let (xyz, delta) = get_xyz_delta(&xy.pos, &xyfut.pos, scale);
+    ptprop_iter.tuple_windows().map(move |(xyz, xyzfut)| {
+        let (xyz, delta) = get_xyz_delta(&xyz.pos, &xyzfut.pos, scale);
         let (delta_x, delta_y, delta_z) = delta;
 
         let (intrp_x, intrp_y, intrp_z) = intrpol(xyz, delta, 0.5);
         let len = pythag_tup3(delta);
-        let target = [-delta_z, delta_y, delta_x];
-        let quat = quaternion::rotation_from_to([0.0, 1.0, 0.0], target);
+        let target = [delta_z, delta_y, -delta_x];
+        let quat = quaternion::rotation_from_to([0.0, -1.0, 0.0], target);
 
         CylProp {
             pos: [intrp_x, intrp_y, intrp_z], 
@@ -25,10 +25,10 @@ where
     })
 }
 
-fn get_xyz_delta(xy: &Vec3, xyfut: &Vec3, scale: Vec3) -> (TupVec3, TupVec3) {
+fn get_xyz_delta(xyz: &Vec3, xyzfut: &Vec3, scale: Vec3) -> (TupVec3, TupVec3) {
     let (scale_x, scale_y, scale_z) = vec3_to_tup(&scale);
-    let xyz = vec3_to_tup(xy);
-    let xyzfut = vec3_to_tup(xyfut);
+    let xyz = vec3_to_tup(xyz);
+    let xyzfut = vec3_to_tup(xyzfut);
     let (x, y, z) = xyz;
     let (xfut, yfut, zfut) = xyzfut;
     let orig = (x * scale_x, y * scale_y, z * scale_z);
