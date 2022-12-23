@@ -7,7 +7,7 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { BlckInfo, CylProp, PtProp } from "../model/backend-comm";
 import { rerender_updated } from "./rendering";
-import { AxesElem, Scaler } from "./elems";
+import { AxesElem } from "./elems";
 import { ControlHandlers } from "../model/control-handlers";
 import { clamp } from "../tools/clamp";
 
@@ -87,19 +87,17 @@ export function Chart3d(props: {
                     rad={0.1} 
                     arrowDim={{wd: 0.2, hght: 0.4}} 
                 />
-                <Scaler scaling={[1,1,1]}>
-                    <Graph1D
-                        trig={trig} 
-                        settrig={settrig} 
-                        ptprops={ptprops} 
-                        setptprops={setptprops} 
-                        cyls={cyls}
-                        setcyls={setcyls}
-                        ptRad={0.1} 
-                        lineRad={0.04}
-                        end={end}
-                        setInfoRef={props.setInfoRef} />
-                </Scaler>
+                <Graph1D
+                    trig={trig} 
+                    settrig={settrig} 
+                    ptprops={ptprops} 
+                    setptprops={setptprops} 
+                    cyls={cyls}
+                    setcyls={setcyls}
+                    ptRad={0.1} 
+                    lineRad={0.04}
+                    end={end}
+                    setInfoRef={props.setInfoRef} />
             </Canvas>
         </>
     )

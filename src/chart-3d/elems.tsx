@@ -45,15 +45,6 @@ function AxisLine(props: {len: number, rad: number, arrowDim: {wd: number, hght:
     )
 }
 
-export function Scaler(props: {children: JSX.Element | JSX.Element[], scaling: [number, number, number]}) {
-    const scaleVec = new THREE.Vector3(...props.scaling)
-    return (
-        <group scale={scaleVec}>
-            {props.children}
-        </group>
-    )
-}
-
 export function AxesElem(props: {ranges: [Vec2Fixed, Vec2Fixed, Vec2Fixed], 
                     rad: number, arrowDim: {wd: number, hght: number}}) {
     const axes = useMemo(() => {
