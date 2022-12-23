@@ -29,9 +29,43 @@ export function Chart3d(props: {
 
     const [trig, settrig] = useState(false)
 
+    // garbage section for mesh test garbage
+    const verts = new Float32Array([
+        // 5, 0, 0,
+        // 5, 1, 5,
+        // 0, 10, -5,
+        -10, 6, 4,
+        0, -5, 4,
+        -1, 5, -1,
+    ])
+    const indices = new Uint32Array([
+        0, 1, 2,
+    ])
+
     return (
         <>
             <Canvas dpr={[2,1]}>
+                {/* testing meshes */}
+                <mesh position={[0,0,0]}>
+                    <bufferGeometry>
+                        <bufferAttribute 
+                            attach="attributes-position"
+                            array={verts}
+                            count={verts.length / 3}
+                            itemSize={3}
+                        />
+                        <bufferAttribute
+                            attach="index"
+                            array={indices}
+                            count={indices.length}
+                            itemSize={1}
+                        />
+                    </bufferGeometry>
+                    <meshBasicMaterial 
+                        color={new THREE.Color(0.1,0,1)} 
+                        side={THREE.DoubleSide}
+                    />
+                </mesh>
                 <CamControl 
                     setControlHandler={props.setControlHandler} 
                     cam_displace={cam_displace}

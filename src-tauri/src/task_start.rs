@@ -17,7 +17,7 @@ pub fn ready(tasks: State<TaskList>)
     });
 }
 
-pub fn get_tasklist(tasks: impl Iterator<Item = Task>) -> TaskList {
+pub fn generate_tasklist(tasks: impl Iterator<Item = Task>) -> TaskList {
     tasks.map(|task| {
         Arc::new(Mutex::new(SingleConsumable::new(task)))
     }).collect()

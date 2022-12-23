@@ -2,6 +2,7 @@ mod chart;
 mod notify_block;
 mod task_start;
 mod single_consumable;
+mod data_transform;
 
 use std::{sync::Arc, time::Duration};
 use chart::types::Vec2;
@@ -11,7 +12,7 @@ use tauri::{async_runtime, Manager, generate_handler};
 use rand::rngs::StdRng;
 use rand::Rng;
 use chart::{get_ptprop, get_cylprop};
-use task_start::{ready, Task, get_tasklist};
+use task_start::{ready, Task, generate_tasklist};
 
 fn main() {
   let buf_size: usize = 7;
@@ -31,10 +32,10 @@ fn main() {
               raw_out_arc.lock().await.recv().await
             }
           }
-        )), 
+        )),
         Box::pin(shit_data(raw_in)),
       ];
-      app.manage(get_tasklist(tasks_list.into_iter()));
+      app.manage(generate_tasklist(tasks_list.into_iter()));
       Ok(())
     })
     .invoke_handler(generate_handler![
