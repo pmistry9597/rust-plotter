@@ -1,8 +1,8 @@
-import { Vec2Fixed, Vec3Fixed } from "./three-helpers";
+import { Vec3Fixed } from "./three-helpers";
 
 export interface CylProp {
     len: number,
-    euler: Vec3Fixed,
+    quat: [number, Vec3Fixed],
     pos: Vec3Fixed,
 }
 export interface BlckInfo {
@@ -10,9 +10,9 @@ export interface BlckInfo {
     name: string,
 }
 export interface RlData {
-    pos: Vec2Fixed,
+    pos: Vec3Fixed,
 }
 export interface PtProp {
-    pos: Vec2Fixed,
+    pos: Vec3Fixed,
     rl_data: RlData,
 }

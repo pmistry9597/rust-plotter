@@ -59,7 +59,7 @@ where
             .map(|x| x.unwrap());
 
         // process section
-        let scale: Vec2 = [3.0, 2.0];
+        let scale: Vec3 = [3.0, 2.0, 1.0];
         let new_ptprops_iter = gen_ptprops_iter(data_chunk_iter.clone(), scale);
 
         let mut chartproc = chartproc_state.lock().await;
@@ -70,7 +70,7 @@ where
 
         let pt_props = &chartproc.pt_props;
         let pts_for_cyl: Vec<PtProp> = get_pts_for_cyl(pt_props, prev_pt_count); // get slice for cyl processing
-        let new_cylprops_iter = gen_cylprops_iter(pts_for_cyl.into_iter(), [1.0, 1.0]);
+        let new_cylprops_iter = gen_cylprops_iter(pts_for_cyl.into_iter(), [1.0, 1.0, 1.0]);
 
         chartproc.cyl_props.extend(new_cylprops_iter.clone());
         

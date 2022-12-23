@@ -1,3 +1,4 @@
+use quaternion::Quaternion;
 use serde::Serialize;
 
 pub type RlDataOpChunk<const N: usize> = [Option<RlData>; N];
@@ -9,18 +10,18 @@ pub type Vec2 = VecN<2>;
 #[derive(Serialize, Clone, Copy)]
 pub struct CylProp {
     pub pos: Vec3,
-    pub euler: Vec3,
+    pub quat: Quaternion<f32>,
     pub len: f32,
 }
 
 #[derive(Serialize, Clone, Copy)]
 pub struct PtProp {
-    pub pos: Vec2,
+    pub pos: Vec3,
     pub rl_data: RlData,
 }
 
 // contains source data (not the rendering sort)
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RlData {
-    pub pos: Vec2,
+    pub pos: Vec3,
 }

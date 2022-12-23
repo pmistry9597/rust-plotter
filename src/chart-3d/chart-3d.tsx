@@ -122,7 +122,7 @@ function CamControl(props:
                 setTracking(false)
                 props.cam_focus.current += 1
             }
-            else if (e.key === "r") {
+            else if (e.key === "t") {
                 setTracking(true)
             }
             cam_polar.current.rad = clamp(cam_polar.current.rad, 1, Infinity)
@@ -271,7 +271,7 @@ function Point(props: {ptprop_w_index: [PtProp, number],
     }, [])
     return (
         <group position={[0,0,0]} key={index}>
-            <mesh position={[...ptprop.pos, 0]} onClick={onclick}>
+            <mesh position={ptprop.pos} onClick={onclick}>
                 <sphereGeometry args={[rad, 32,32,32]} />
                 <meshBasicMaterial color={color}></meshBasicMaterial>
             </mesh>
@@ -319,15 +319,17 @@ function Graph1D(props: {
                     key={index} />
         }, 
         [])
-    const meshRender = useRef([] as JSX.Element[])
+    const cylRender = useRef([] as JSX.Element[])
     const cyl_props_hash = useRef([] as (string | Int32Array)[])
-    const mesh_gener = useMemo(() => (cylprop_w_index: [CylProp, number]) => {
+    const cyl_gener = useMemo(() => (cylprop_w_index: [CylProp, number]) => {
         const [cylprop, index] = cylprop_w_index
+        const [q_r, q_i] = cylprop.quat
+        const quat = new THREE.Quaternion(q_r, ...q_i)
         return (
             <group 
                 position={cylprop.pos} 
                 key={index}>
-                <mesh rotation={new THREE.Euler(...cylprop.euler)} castShadow>
+                <mesh quaternion={quat} castShadow>
                     <cylinderBufferGeometry 
                         args={[props.lineRad, props.lineRad, cylprop.len, 16]} />
                     <meshBasicMaterial color="rgb(10,200,200)"></meshBasicMaterial>
@@ -339,7 +341,7 @@ function Graph1D(props: {
         const ptprops = props.ptprops
         rerender_updated(ptprops, pt_props_hash, pt_gener, ptRender.current)
         const cylprops = props.cyls
-        rerender_updated(cylprops, cyl_props_hash, mesh_gener, meshRender.current)
+        rerender_updated(cylprops, cyl_props_hash, cyl_gener, cylRender.current)
 
         props.settrig(false)
     }, [props.trig])
@@ -347,7 +349,7 @@ function Graph1D(props: {
     return (
         <group>
             <group>{ptRender.current}</group>
-            <group>{meshRender.current}</group>
+            <group>{cylRender.current}</group>
         </group>
     )
 }
