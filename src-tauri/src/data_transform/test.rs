@@ -1,8 +1,9 @@
-use std::{f32::consts::PI};
+use std::f32::consts::PI;
 
+use itertools::Itertools;
 use rustfft::{FftPlanner, num_complex::Complex, num_traits::Pow};
-
-use super::{transform::Transform, processor::Processor, notify_hook::EmptyNotifyHook, orig::Raw, len::Len, retrieve::Retrieve, change_desrip::Accessor};
+use std::mem;
+use super::{transform::Transform, processor::Processor, notify_hook::{EmptyNotifyHook, NotifyHook}, orig::Raw, len::Len, retrieve::Retrieve, change_desrip::{Accessor, ChangeDescrip, Change}};
 
 type DFTOut = Complex<f32>;
 type RawIn = f32;
@@ -45,9 +46,10 @@ fn dft_full_no_notify() {
                 .fold(0.0, |acc, entry| acc + entry)
     );
     let insert_1 = real_in.add(real_1.clone());
-    transform.change(&real_in, insert_1);
-
+    transform.change(&real_in, &insert_1);
     let out = transform.get_out();
+
+    // assertions woo
     let full_access = Accessor::Range((0, out.len()));
     // println!("len: {}", out.len());
     let out_it = out.get(full_access);
@@ -80,6 +82,79 @@ fn dft_full_no_notify() {
     let (_, (last_mag, _)) = max_half[freq_count_1 - 1];
     let (_, (noise_mag, _)) = max_half[freq_count_1];
     assert!(last_mag / noise_mag > 100.0);
+}
 
-    // todo!("check results of final product")
+type RawOut = f32;
+struct ScaleTransformer{
+    scale: f32,
+}
+impl Processor<Vec<RawOut>, RawOut, Vec<RawIn>> for ScaleTransformer {
+    fn change(self: &mut Self, raw: &Raw<RawOut, Vec<RawIn>>, out: &mut Vec<RawOut>, change: &super::change_desrip::ChangeDescrip) {
+        match change {
+            ChangeDescrip::Reset => {
+                out.clear();
+            }
+            ChangeDescrip::Change(changes) => {
+                changes.iter().for_each(|change| {
+                    match change {
+                        Change::Add(accessor) => {
+                            out.extend(raw.get(accessor.clone()).map(|entry| entry * self.scale));
+                        },
+                        Change::Remove(accessor) => {
+                            Accessor::to_indices(accessor.clone()).for_each(|index| {
+                                out.remove(index);
+                            });
+                        }
+                        _ => {}
+                    }
+                });
+            }
+        }
+    }
+}
+
+struct TestNotify<'a> {
+    notifs: &'a mut Vec<ChangeDescrip>,
+}
+impl<'a> NotifyHook for TestNotify<'a> {
+    fn notify(self: &mut Self, change: &ChangeDescrip) {
+        self.notifs.push(change.clone());
+    }
+}
+
+#[test]
+fn scaling_add_remove_notify() {
+    let scale = 0.2;
+    let processor = ScaleTransformer{scale};
+    let mut notif_history = vec![] as Vec<ChangeDescrip>;
+    let mut transform = Transform::new(vec![] as Vec<f32>, processor, TestNotify{notifs: &mut notif_history});
+
+    // pushing and removing signal lul
+    let mut raw = Raw::new(vec![] as Vec<f32>);
+    let sig_in = (0..100).map(|elem| elem as f32);
+    let chunk_n = 5;
+    let mut notif_expected = vec![] as Vec<ChangeDescrip>;
+    for chonk in sig_in.chunks(chunk_n).into_iter() {
+        let change = raw.add(chonk);
+        transform.change(&raw, &change);
+        notif_expected.push(change);
+    }
+
+    // check if added entries are expected
+    // for (raw_val, out_val) in raw.get(Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()) {
+    //     println!("raw: {}, out: {}", raw_val, out_val);
+    // }
+    assert!(raw.get(Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()).all(|(raw_val, out_val)| {
+        *raw_val * scale == *out_val
+    }));
+
+    let remov_indices = [50, 5, 0];
+    let remov_change = raw.remove(remov_indices.iter().map(|index| *index as usize));
+    transform.change(&raw, &remov_change);
+    notif_expected.push(remov_change);
+    assert!(raw.get(Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()).all(|(raw_val, out_val)| {
+        *raw_val * scale == *out_val
+    }));
+    assert!(raw.len() == 100 - remov_indices.len());
+    assert!(itertools::equal(notif_expected, notif_history));
 }

@@ -1,10 +1,10 @@
 use super::change_desrip::ChangeDescrip;
 
 pub trait NotifyHook {
-    fn notify(self: &Self, change: &ChangeDescrip);
+    fn notify(self: &mut Self, change: &ChangeDescrip);
 }
 
 pub struct EmptyNotifyHook;
 impl NotifyHook for EmptyNotifyHook {
-    fn notify(self: &Self, _change: &ChangeDescrip) {}
+    fn notify(self: &mut Self, _change: &ChangeDescrip) {}
 }

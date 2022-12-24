@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use super::{change_desrip::{ChangeDescrip, Change, Accessor, assoc_accessor, indices_accessor}, len::Len, retrieve::Retrieve};
+use super::{change_desrip::{ChangeDescrip, Change, Accessor}, len::Len, retrieve::Retrieve};
 
 pub struct Raw<Type, RawStore> 
     where RawStore: RawFns<Type>
@@ -21,15 +21,15 @@ impl<Type, RawStore> Raw<Type, RawStore>
     }
     pub fn remove(self: &mut Self, index_iter: impl Iterator<Item = usize> + Clone) -> ChangeDescrip {
         self.raw_store.remove(index_iter.clone());
-        ChangeDescrip::Change(vec![Change::Remove(indices_accessor(index_iter))])
+        ChangeDescrip::Change(vec![Change::Remove(Accessor::from_indices(index_iter))])
     }
     pub fn replace(self: &mut Self, assoc_iter: impl Iterator<Item = (usize, Type)> + Clone) -> ChangeDescrip {
         self.raw_store.replace(assoc_iter.clone());
-        ChangeDescrip::Change(vec![Change::Replace(assoc_accessor(assoc_iter))])
+        ChangeDescrip::Change(vec![Change::Replace(Accessor::from_assoc(assoc_iter))])
     }
     pub fn insert(self: &mut Self, assoc_iter: impl Iterator<Item = (usize, Type)> + Clone) -> ChangeDescrip {
         self.raw_store.insert(assoc_iter.clone());
-        ChangeDescrip::Change(vec![Change::Insert(assoc_accessor(assoc_iter))])
+        ChangeDescrip::Change(vec![Change::Insert(Accessor::from_assoc(assoc_iter))])
     }
     pub fn reset(self: &mut Self) -> ChangeDescrip {
         ChangeDescrip::Reset
