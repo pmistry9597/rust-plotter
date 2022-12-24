@@ -36,36 +36,50 @@ fn dft_full_no_notify() {
     // insert signals we like into real
     let real_1_len = 1000;
     let real_input_1 = (0..real_1_len).into_iter().map(|num| num as f32);
-    let real_freq_1 = vec![0.2];
+    let real_freq_1 = vec![0.1, 0.2, 0.35, 0.4];
+    let real_mag_1 = vec![4, 2, 5, 8];
+    assert_eq!(real_freq_1.len(), real_mag_1.len());
     let real_1 = real_input_1.into_iter().map(|t|
-        real_freq_1.iter().map(|f| (2.0 * PI * f.to_owned() as f32 * t).cos()).fold(0.0, |acc, entry| acc + entry)
+        real_freq_1.iter().zip(real_mag_1.iter()).map(|(f, m)| 
+            (*m as f32) * (2.0 * PI * f.to_owned() as f32 * t).cos())
+                .fold(0.0, |acc, entry| acc + entry)
     );
     let insert_1 = real_in.add(real_1.clone());
     transform.change(&real_in, insert_1);
 
-    // ASSERT WOo
-    // transfer back into real frequency domain
     let out = transform.get_out();
     let full_access = Accessor::Range((0, out.len()));
-    println!("len: {}", out.len());
+    // println!("len: {}", out.len());
     let out_it = out.get(full_access);
     // find maximum magnitudes
     let mut max: Vec<(usize, (f32, Complex<f32>))> = out_it.cloned().map(|comp| ((comp.re.pow(2) as f32 + comp.im.pow(2) as f32).pow(0.5), comp))
         .enumerate().collect();
-    max.sort_by(|(_, (a_len, _a_comp)), (_, (b_len, _b_comp))| {
+    let max_len = max.len();
+    let max_half = &mut max[0..(max_len as f32 * 0.5) as usize];
+    max_half.sort_by(|(_, (a_len, _a_comp)), (_, (b_len, _b_comp))| {
         a_len.total_cmp(b_len)
     });
-    let max_len = max.len();
-    // let ind = 0 ;// max.len() - 1;
-    // println!("max freq: {}, max: {}, {}", max[ind].0, max[ind].1.0, max[ind].1.1);
-    for (f, (len, comp)) in &max[max_len - 30 .. max_len] {
-        println!("f: {}, len: {}, comp: {}", f, len, comp);
+    max_half.reverse();
+
+    // amplitude check
+    let freq_count_1 = real_freq_1.len();
+    assert!(max_half[0..freq_count_1].iter().all(|(found_f, (len, _))| {   
+        real_freq_1.iter().zip(real_mag_1.iter()).any(|(real_f, mag)| {
+            let unnorm_real_f = real_f * 1000.0;
+            let f_within_5per = ((*found_f as f32 - unnorm_real_f) / unnorm_real_f).abs() < 0.05;
+            let unnorm_real_mag = *mag as f32 * 1000.0 / 2.0;
+            let m_within_5per = ((*len - unnorm_real_mag) / unnorm_real_mag).abs() < 0.05;
+            println!("f - {} {}, m - {} {}", found_f, unnorm_real_f, len, unnorm_real_mag);
+            f_within_5per && m_within_5per
+        })
+    }));
+    // ensure remaining frequencies are just noise
+    for (f, (len, _)) in &max_half[0..10] {
+        println!("f: {}, len: {}", f, len);
     }
-    let avg_real_1 = real_1.fold(0.0, |acc, entry| acc + entry) / (real_1_len as f32);
-    println!("avg real 1: {}", avg_real_1);
-    // for entry in out_it {
-    //     println!("{}", entry);
-    // }
-    todo!("figure out how dft works and why this shit is unintuitive");
-    // let result: Vec<f32> = out_it.map(|comp| comp.re).collect();
+    let (_, (last_mag, _)) = max_half[freq_count_1 - 1];
+    let (_, (noise_mag, _)) = max_half[freq_count_1];
+    assert!(last_mag / noise_mag > 100.0);
+
+    // todo!("check results of final product")
 }
