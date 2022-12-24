@@ -1,3 +1,5 @@
+use super::change_desrip::Accessor;
+
 pub trait Retrieve<T> {
-    fn get<It: Iterator<Item = T>>(self: &Self, index_iter: impl Iterator<Item = usize>) -> It;
+    fn get<'r>(self: &'r Self, accessor: Accessor) -> Box<dyn Iterator<Item = &T> + 'r>;
 }
