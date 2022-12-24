@@ -3,6 +3,7 @@ mod notify_block;
 mod task_start;
 mod single_consumable;
 mod data_transform;
+mod graph;
 
 use std::{sync::Arc, time::Duration};
 use chart::types::Vec2;

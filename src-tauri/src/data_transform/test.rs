@@ -2,8 +2,7 @@ use std::f32::consts::PI;
 
 use itertools::Itertools;
 use rustfft::{FftPlanner, num_complex::Complex, num_traits::Pow};
-use std::mem;
-use super::{transform::Transform, processor::Processor, notify_hook::{EmptyNotifyHook, NotifyHook}, orig::Raw, len::Len, retrieve::Retrieve, change_desrip::{Accessor, ChangeDescrip, Change}};
+use super::{transform::Transform, processor::Processor, notify_hook::{EmptyNotifyHook, NotifyHook}, store::Store, len::Len, retrieve::Retrieve, change_desrip::{Accessor, ChangeDescrip, Change}};
 
 type DFTOut = Complex<f32>;
 type RawIn = f32;
@@ -16,20 +15,22 @@ impl DFTTransformer {
     }
 }
 impl Processor<Vec<DFTOut>, RawIn, Vec<RawIn>> for DFTTransformer {
-    fn change(self: &mut Self, raw: &super::orig::Raw<RawIn, Vec<RawIn>>, out: &mut Vec<DFTOut>, _change: &super::change_desrip::ChangeDescrip) {
+    fn change<StoreType: Retrieve<RawIn>>(self: &mut Self, raw: &StoreType, out: &mut Vec<DFTOut>, _change: &super::change_desrip::ChangeDescrip) -> ChangeDescrip {
         let full_access = Accessor::Range((0, raw.len()));
-        let mut buf: Vec<DFTOut> = raw.get(full_access).map(|entry| Complex::new(entry.to_owned(), 0.0)).collect();
+        let mut buf: Vec<DFTOut> = raw.get(&full_access).map(|entry| Complex::new(entry.to_owned(), 0.0)).collect();
         
         let fft = self.planner.plan_fft_forward(raw.len());
         fft.process(&mut buf);
+        let buf_len = buf.len();
         *out = buf;
+        ChangeDescrip::Change(vec![Change::Replace(Accessor::Range((0, buf_len)))])
     }
 }
 
 #[test]
 fn dft_full_no_notify() {
     let real_in_store: Vec<RawIn> = vec![];
-    let mut real_in = Raw::new(real_in_store);
+    let mut real_in = Store::new(real_in_store);
     let processor = DFTTransformer::new();
     let mut transform = 
             Transform::new(vec![] as Vec<DFTOut>, processor, EmptyNotifyHook);
@@ -52,7 +53,7 @@ fn dft_full_no_notify() {
     // assertions woo
     let full_access = Accessor::Range((0, out.len()));
     // println!("len: {}", out.len());
-    let out_it = out.get(full_access);
+    let out_it = out.get(&full_access);
     // find maximum magnitudes
     let mut max: Vec<(usize, (f32, Complex<f32>))> = out_it.cloned().map(|comp| ((comp.re.pow(2) as f32 + comp.im.pow(2) as f32).pow(0.5), comp))
         .enumerate().collect();
@@ -85,31 +86,33 @@ fn dft_full_no_notify() {
 }
 
 type RawOut = f32;
-struct ScaleTransformer{
+struct ScaleTransformer {
     scale: f32,
 }
 impl Processor<Vec<RawOut>, RawOut, Vec<RawIn>> for ScaleTransformer {
-    fn change(self: &mut Self, raw: &Raw<RawOut, Vec<RawIn>>, out: &mut Vec<RawOut>, change: &super::change_desrip::ChangeDescrip) {
+    fn change<StoreOut: Retrieve<RawOut>>(self: &mut Self, raw: &StoreOut, out: &mut Vec<RawOut>, change: &super::change_desrip::ChangeDescrip) -> ChangeDescrip {
         match change {
             ChangeDescrip::Reset => {
                 out.clear();
-            }
+            },
             ChangeDescrip::Change(changes) => {
                 changes.iter().for_each(|change| {
                     match change {
                         Change::Add(accessor) => {
-                            out.extend(raw.get(accessor.clone()).map(|entry| entry * self.scale));
+                            out.extend(raw.get(&accessor).map(|entry| entry * self.scale));
                         },
                         Change::Remove(accessor) => {
-                            Accessor::to_indices(accessor.clone()).for_each(|index| {
+                            accessor.to_indices().for_each(|index| {
                                 out.remove(index);
                             });
-                        }
+                        },
                         _ => {}
                     }
                 });
             }
+            _ => {}
         }
+        change.clone()
     }
 }
 
@@ -130,7 +133,7 @@ fn scaling_add_remove_notify() {
     let mut transform = Transform::new(vec![] as Vec<f32>, processor, TestNotify{notifs: &mut notif_history});
 
     // pushing and removing signal lul
-    let mut raw = Raw::new(vec![] as Vec<f32>);
+    let mut raw = Store::new(vec![] as Vec<f32>);
     let sig_in = (0..100).map(|elem| elem as f32);
     let chunk_n = 5;
     let mut notif_expected = vec![] as Vec<ChangeDescrip>;
@@ -144,7 +147,7 @@ fn scaling_add_remove_notify() {
     // for (raw_val, out_val) in raw.get(Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()) {
     //     println!("raw: {}, out: {}", raw_val, out_val);
     // }
-    assert!(raw.get(Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()).all(|(raw_val, out_val)| {
+    assert!(raw.get(&Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()).all(|(raw_val, out_val)| {
         *raw_val * scale == *out_val
     }));
 
@@ -152,7 +155,7 @@ fn scaling_add_remove_notify() {
     let remov_change = raw.remove(remov_indices.iter().map(|index| *index as usize));
     transform.change(&raw, &remov_change);
     notif_expected.push(remov_change);
-    assert!(raw.get(Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()).all(|(raw_val, out_val)| {
+    assert!(raw.get(&Accessor::Range((0, raw.len()))).zip(transform.get_out().iter()).all(|(raw_val, out_val)| {
         *raw_val * scale == *out_val
     }));
     assert!(raw.len() == 100 - remov_indices.len());

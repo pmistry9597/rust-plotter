@@ -1,7 +1,7 @@
-use super::{change_desrip::ChangeDescrip, orig::{Raw, RawFns}};
+use super::{change_desrip::ChangeDescrip, store::{StoreFns}, Retrieve};
 
 pub trait Processor<Out, RawType, RawStore>
-    where RawStore: RawFns<RawType>
+    where RawStore: StoreFns<RawType>
 {
-    fn change(self: &mut Self, raw: &Raw<RawType, RawStore>, out: &mut Out, change: &ChangeDescrip);
+    fn change<StoreType: Retrieve<RawType>>(self: &mut Self, raw: &StoreType, out: &mut Out, change: &ChangeDescrip) -> ChangeDescrip;
 }

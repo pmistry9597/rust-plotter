@@ -1,5 +1,6 @@
 #[derive(Clone, PartialEq)]
 pub enum ChangeDescrip {
+    None,
     Reset,
     Change(Vec<Change>),
 }
@@ -25,10 +26,10 @@ impl Accessor {
     pub fn from_assoc<_T>(assoc_iter: impl Iterator<Item = (usize, _T)>) -> Accessor {
         Accessor::Indices(assoc_iter.map(|(index, _t)| {index}).collect())
     }
-    pub fn to_indices(accessor: Accessor) -> Box<dyn Iterator<Item = usize>> {
-        match accessor {
-            Accessor::Range((begin, end)) => Box::new((begin..end).into_iter()),
-            Accessor::Indices(indices) => Box::new(indices.into_iter(),)
+    pub fn to_indices(&self) -> Box<dyn Iterator<Item = usize> + '_> {
+        match self {
+            Accessor::Range((begin, end)) => Box::new((*begin..*end).into_iter()),
+            Accessor::Indices(indices) => Box::new(indices.iter().map(|index| *index))
         }
     }
 }

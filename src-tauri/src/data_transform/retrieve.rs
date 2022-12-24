@@ -1,5 +1,5 @@
-use super::change_desrip::Accessor;
+use super::{change_desrip::Accessor, len::Len};
 
-pub trait Retrieve<T> {
-    fn get<'r>(self: &'r Self, accessor: Accessor) -> Box<dyn Iterator<Item = &T> + 'r>;
+pub trait Retrieve<T>: Len {
+    fn get<'a>(self: &'a Self, accessor: &'a Accessor) -> Box<dyn Iterator<Item = &T> + 'a>;
 }

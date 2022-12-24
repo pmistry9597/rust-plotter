@@ -6,7 +6,7 @@ use futures::lock::Mutex;
 use tauri::{Window, State, AppHandle, Manager};
 use types::RlDataOpChunk;
 
-use crate::notify_block::notify_block;
+use crate::{notify_block::notify_block};
 use types::*;
 use data_proc::*;
 
