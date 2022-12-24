@@ -33,13 +33,14 @@ where
         let srcs = graph.srcs.borrow(); //Ref::map(graph.srcs.borrow(), |srcs: &'static Store<RlData, Vec<RlData>>| &srcs);
         let pts_descrip = graph.pts.borrow_mut().change(&srcs, &rl_descrip);
         // need cyls to read pts transform in graph
-        let pts_store = Store::new(&graph.pts.borrow());
-        graph.cyls.borrow_mut().change(graph.pts.borrow().get_out(), &pts_descrip);
+        let pts = graph.pts.borrow().get_out();
+        // let pts_store = Store::new(pts);
+        // graph.cyls.borrow_mut().change(&pts_store, &pts_descrip);
     }
 }
 
-pub struct GraphData {
-    srcs: RefCell<Store<RlData, Vec<RlData>>>,
-    pts: RefCell<Transform<Vec<PtProp>, PtProcess, PtNotify, RlData, Vec<RlData>>>,
-    cyls: RefCell<Transform<Vec<CylProp>, CylProcess, CylNotify, PtProp, Vec<PtProp>>,>
+pub struct GraphData<'p> {
+    srcs: RefCell<Store<RlData, &'p mut Vec<RlData>>>,
+    pts: RefCell<Transform<Vec<PtProp>, PtProcess, PtNotify, RlData, &'p mut Vec<RlData>>>,
+    cyls: RefCell<Transform<Vec<CylProp>, CylProcess, CylNotify, PtProp, &'p mut Vec<PtProp>>,>
 }

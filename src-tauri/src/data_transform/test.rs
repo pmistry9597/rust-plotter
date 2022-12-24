@@ -14,7 +14,7 @@ impl DFTTransformer {
         DFTTransformer{planner: FftPlanner::new()}
     }
 }
-impl Processor<Vec<DFTOut>, RawIn, Vec<RawIn>> for DFTTransformer {
+impl Processor<Vec<DFTOut>, RawIn, &mut Vec<RawIn>> for DFTTransformer {
     fn change<StoreType: Retrieve<RawIn>>(self: &mut Self, raw: &StoreType, out: &mut Vec<DFTOut>, _change: &super::change_desrip::ChangeDescrip) -> ChangeDescrip {
         let full_access = Accessor::Range((0, raw.len()));
         let mut buf: Vec<DFTOut> = raw.get(&full_access).map(|entry| Complex::new(entry.to_owned(), 0.0)).collect();
@@ -29,8 +29,8 @@ impl Processor<Vec<DFTOut>, RawIn, Vec<RawIn>> for DFTTransformer {
 
 #[test]
 fn dft_full_no_notify() {
-    let real_in_store: Vec<RawIn> = vec![];
-    let mut real_in = Store::new(real_in_store);
+    let mut real_in_store: Vec<RawIn> = vec![];
+    let mut real_in = Store::new(&mut real_in_store);
     let processor = DFTTransformer::new();
     let mut transform = 
             Transform::new(vec![] as Vec<DFTOut>, processor, EmptyNotifyHook);
@@ -48,7 +48,7 @@ fn dft_full_no_notify() {
     );
     let insert_1 = real_in.add(real_1.clone());
     transform.change(&real_in, &insert_1);
-    let out = transform.get_out();
+    let mut out = transform.get_out();
 
     // assertions woo
     let full_access = Accessor::Range((0, out.len()));
@@ -89,7 +89,7 @@ type RawOut = f32;
 struct ScaleTransformer {
     scale: f32,
 }
-impl Processor<Vec<RawOut>, RawOut, Vec<RawIn>> for ScaleTransformer {
+impl Processor<Vec<RawOut>, RawOut, &mut Vec<RawIn>> for ScaleTransformer {
     fn change<StoreOut: Retrieve<RawOut>>(self: &mut Self, raw: &StoreOut, out: &mut Vec<RawOut>, change: &super::change_desrip::ChangeDescrip) -> ChangeDescrip {
         match change {
             ChangeDescrip::Reset => {
@@ -132,8 +132,10 @@ fn scaling_add_remove_notify() {
     let mut notif_history = vec![] as Vec<ChangeDescrip>;
     let mut transform = Transform::new(vec![] as Vec<f32>, processor, TestNotify{notifs: &mut notif_history});
 
+
     // pushing and removing signal lul
-    let mut raw = Store::new(vec![] as Vec<f32>);
+    let mut real_in_store: Vec<RawIn> = vec![];
+    let mut raw = Store::new(&mut real_in_store);
     let sig_in = (0..100).map(|elem| elem as f32);
     let chunk_n = 5;
     let mut notif_expected = vec![] as Vec<ChangeDescrip>;

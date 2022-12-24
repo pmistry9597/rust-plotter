@@ -52,7 +52,7 @@ impl<T, RawStore> Retrieve<T> for Store<T, RawStore>
     }
 }
 
-pub trait StoreFns<Type>: Len + Retrieve<Type> {
+pub trait StoreFns<Type>: Retrieve<Type> {
     fn add(self: &mut Self, entry_iter: impl Iterator<Item = Type>) -> Accessor; // assume it returns indices that were added
     fn remove(self: &mut Self, index_iter: impl Iterator<Item = usize>); // assume order is way to remove (check order of the iterator you pass in)
     fn replace(self: &mut Self, assoc_iter: impl Iterator<Item = (usize, Type)>);
@@ -60,14 +60,14 @@ pub trait StoreFns<Type>: Len + Retrieve<Type> {
     fn reset(self: &mut Self);
 }
 
-impl<T> StoreFns<T> for &Vec<T> {
+impl<T> StoreFns<T> for &mut Vec<T> {
     fn add(self: &mut Self, entry_iter: impl Iterator<Item = T>) -> Accessor {
         let init_size = self.len();
         self.extend(entry_iter);
         Accessor::Range((init_size, self.len()))
     }
     fn remove(self: &mut Self, index_iter: impl Iterator<Item = usize>) {
-        index_iter.for_each(|index| {self.remove(index);});
+        index_iter.for_each(|index| {(self as &mut Vec<T>).remove(index);});
     }
     fn replace(self: &mut Self, assoc_iter: impl Iterator<Item = (usize, T)>) {
         assoc_iter.for_each(|(index, entry)| (self as &mut Vec<T>).insert(index, entry));
@@ -79,9 +79,18 @@ impl<T> StoreFns<T> for &Vec<T> {
         self.clear();
     }
 }
-impl<T> Len for &Vec<T> {
+impl<T> Len for &mut Vec<T> {
     fn len(self: &Self) -> usize {
-        self.len()
+        (self as &Vec<T>).len()
+    }
+}
+
+impl<T> Retrieve<T> for &mut Vec<T> {
+    fn get<'a>(self: &'a Self, accessor: &'a Accessor) -> Box<dyn Iterator<Item = &T> + 'a> {
+        match accessor {
+            Accessor::Range((begin, end)) => Box::new(self[*begin..*end].iter()),
+            Accessor::Indices(indices) => Box::new(indices.into_iter().map(|index| &self[*index])),
+        }
     }
 }
 
@@ -93,3 +102,41 @@ impl<T> Retrieve<T> for &Vec<T> {
         }
     }
 }
+
+impl<T> Len for &Vec<T> {
+    fn len(self: &Self) -> usize {
+        (self as &Vec<T>).len()
+    }
+}
+
+// impl<T> StoreFns<T> for Vec<T> {
+//     fn add(self: &mut Self, entry_iter: impl Iterator<Item = T>) -> Accessor {
+//         let init_size = self.len();
+//         self.extend(entry_iter);
+//         Accessor::Range((init_size, self.len()))
+//     }
+//     fn remove(self: &mut Self, index_iter: impl Iterator<Item = usize>) {
+//         index_iter.for_each(|index| {(self as &mut Vec<T>).remove(index);});
+//     }
+//     fn replace(self: &mut Self, assoc_iter: impl Iterator<Item = (usize, T)>) {
+//         assoc_iter.for_each(|(index, entry)| (self as &mut Vec<T>).insert(index, entry));
+//     }
+//     fn insert(self: &mut Self, assoc_iter: impl Iterator<Item = (usize, T)>) {
+//         assoc_iter.for_each(|(index, entry)| self[index] = entry);
+//     }
+//     fn reset(self: &mut Self) {
+//         self.clear();
+//     }
+// }
+
+// impl<T> Retrieve<T> for Vec<T> {
+//     fn get<'a>(self: &'a Self, accessor: &'a Accessor) -> Box<dyn Iterator<Item = &T> + 'a> {
+//         self.get(accessor)
+//     }
+// }
+
+// impl<T> Len for Vec<T> {
+//     fn len(self: &Self) -> usize {
+//         self.len()
+//     }
+// }

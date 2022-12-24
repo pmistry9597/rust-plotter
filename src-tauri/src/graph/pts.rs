@@ -5,7 +5,7 @@ use super::{notify::notify_new_data, types::{PtProp, Vec3, RlData}, data_helpers
 pub struct PtProcess {
     scale: Vec3
 }
-impl Processor<Vec<PtProp>, RlData, Vec<RlData>> for PtProcess {
+impl Processor<Vec<PtProp>, RlData, &mut Vec<RlData>> for PtProcess {
     fn change<StoreType: Retrieve<RlData>>(self: &mut Self, raw: &StoreType, out: &mut Vec<PtProp>, change: &ChangeDescrip) -> ChangeDescrip {
         if let ChangeDescrip::Change(changes) = change {
             for change in changes {
