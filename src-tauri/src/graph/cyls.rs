@@ -6,12 +6,17 @@ use super::{notify::notify_new_data, types::{PtProp, Vec3, CylProp}, data_helper
 pub struct CylProcess {
     scale: Vec3
 }
+impl CylProcess {
+    pub fn new(scale: Vec3) -> Self {
+        CylProcess{scale}
+    }
+}
 impl Processor<Vec<CylProp>, PtProp, &mut Vec<PtProp>> for CylProcess {
     fn change<StoreType: Retrieve<PtProp>>(self: &mut Self, raw: &StoreType, out: &mut Vec<CylProp>, change: &ChangeDescrip) -> ChangeDescrip {
         if let ChangeDescrip::Change(changes) = change {
             for change in changes {
                 if let Change::Add(access) = change {
-                    let out_pts = gen_cylprops_iter(raw.get(access), self.scale);
+                    let out_pts = gen_cylprops_iter(raw.get(access).into_iter(), self.scale);
                     out.extend(out_pts);
                 }
             }
@@ -24,6 +29,11 @@ impl Processor<Vec<CylProp>, PtProp, &mut Vec<PtProp>> for CylProcess {
 
 pub struct CylNotify {
     window: Window
+}
+impl CylNotify {
+    pub fn new(window: Window) -> Self {
+        CylNotify{window}
+    }
 }
 impl NotifyHook for CylNotify {
     fn notify(self: &mut Self, change: &ChangeDescrip) {
@@ -39,7 +49,7 @@ impl NotifyHook for CylNotify {
 
 fn gen_cylprops_iter<'p, PtPropIter>(ptprop_iter: PtPropIter, scale: Vec3) -> impl Iterator<Item = CylProp> + 'p
 where
-    PtPropIter: Iterator<Item = &'p PtProp> + 'p,
+    PtPropIter: Iterator<Item = PtProp> + 'p,
 {
     ptprop_iter.tuple_windows().map(move |(xyz, xyzfut)| {
         let (xyz, delta) = get_xyz_delta(&xyz.pos, &xyzfut.pos, scale);

@@ -1,5 +1,9 @@
-use super::{change_desrip::Accessor, len::Len};
+use super::{mutate_info::Accessor, len::Len};
 
-pub trait Retrieve<T>: Len {
-    fn get<'a>(self: &'a Self, accessor: &'a Accessor) -> Box<dyn Iterator<Item = &T> + 'a>;
+pub trait Retrieve<T>: Len
+    where T: Clone
+{
+    fn get(self: &Self, accessor: &Accessor) -> Vec<T>;
 }
+
+//Box<dyn Iterator<Item = T>>

@@ -1,12 +1,12 @@
 #[derive(Clone, PartialEq)]
-pub enum ChangeDescrip {
+pub enum MutateInfo {
     None,
     Reset,
-    Change(Vec<Change>),
+    Change(Vec<Mutation>),
 }
 
 #[derive(Clone, PartialEq)]
-pub enum Change {
+pub enum Mutation {
     Add(Accessor),
     Replace(Accessor),
     Insert(Accessor),
