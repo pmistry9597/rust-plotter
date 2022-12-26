@@ -1,7 +1,8 @@
 use quaternion::Quaternion;
 use serde::Serialize;
 
-pub type RlDataOpChunk<const N: usize> = [Option<RlData>; N];
+pub type OpChunk<Type, const N: usize> = [Option<Type>; N];
+pub type RlDataOpChunk<const N: usize> = OpChunk<RlData, N>;
 pub type VecN<const N: usize> = [f32; N];
 pub type Vec3 = VecN<3>;
 pub type Vec2 = VecN<2>;
@@ -14,6 +15,12 @@ pub struct CylProp {
     pub len: f32,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct RlPointSlice {
+    pub pts: Vec<RlData>
+}
+
+// kinda like below but for mesh case
 #[derive(Serialize, Clone, Copy)]
 pub struct PtProp {
     pub pos: Vec3,

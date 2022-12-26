@@ -240,7 +240,7 @@ function BackendEndpoint(props: {
         listen("pt_update", (event: any) => {
             const payload: BlckInfo = event.payload;
             const i = payload.index
-            invoke("get_ptprop", {i}).then((ptprop_val) => {
+            invoke("get_ptprop_1d", {i}).then((ptprop_val) => {
                 const ptprop = ptprop_val as PtProp
                 ptprops_ref.current.push(ptprop)
                 props.settrig(true)
@@ -251,7 +251,7 @@ function BackendEndpoint(props: {
         listen("cyl_update", (event: any) => {
             const payload: BlckInfo = event.payload
             const i = payload.index
-            invoke("get_cylprop", {i}).then((cylprop_val) => {
+            invoke("get_cylprop_1d", {i}).then((cylprop_val) => {
                 const cylprop = cylprop_val as CylProp
                 cyles_ref.current.push(cylprop)
                 props.settrig(true)
