@@ -32,4 +32,19 @@ impl Accessor {
             Accessor::Indices(indices) => Box::new(indices.iter().map(|index| *index))
         }
     }
+    pub fn cap(&mut self, max: usize) {
+        match self {
+            Accessor::Range((begin, end)) => *self = Accessor::Range((*begin, (*end).clamp(0, max))),
+            Accessor::Indices(indices) => {
+                *indices.last_mut().expect("nothing here??") = (*indices.last().expect("bro help")).clamp(0, max);
+                *self = Accessor::Indices(indices.to_vec());
+            }
+        }
+    }
+    pub fn extend_left(&mut self, by: usize) {
+        match self {
+            Accessor::Range((begin, end)) => *self = Accessor::Range(((*begin as i32 - by as i32).max(0).try_into().expect("you failed still loser"), *end)),
+            Accessor::Indices(indices) => indices.insert(0, (indices[0] as i32 - by as i32).max(0).try_into().expect("you failed still again loser"))
+        }
+    }
 }

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use super::{mutate_info::{MutateInfo, Accessor}, Retrieve, len::Len, mutator::Mutator};
+use super::{mutate_info::{MutateInfo}, Retrieve, len::Len, mutator::Mutator};
 
 // rationale is to give as much information to whatever transforms the data
 // so that most efficient operations and notifications can be executed

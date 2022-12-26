@@ -1,27 +1,27 @@
 use tauri::Window;
-use crate::{data_transform::{NotifyHook, ChangeDescrip, change_desrip::Change, Processor, Retrieve}};
+use crate::{data_transform::{NotifyHook, Retrieve, mutate_info::{MutateInfo, Mutation}, mutator::Mutator}};
 use super::{notify::notify_new_data, types::{PtProp, Vec3, RlData}, data_helpers::scale_vecn};
 
-pub struct PtProcess {
+pub struct PtMutate {
     scale: Vec3
 }
-impl PtProcess {
+impl PtMutate {
     pub fn new(scale: Vec3) -> Self {
-        PtProcess{scale}
+        PtMutate{scale}
     }
 }
-impl Processor<Vec<PtProp>, RlData, &mut Vec<RlData>> for PtProcess {
-    fn change<StoreType: Retrieve<RlData>>(self: &mut Self, raw: &StoreType, out: &mut Vec<PtProp>, change: &ChangeDescrip) -> ChangeDescrip {
-        if let ChangeDescrip::Change(changes) = change {
+impl Mutator<RlData, Vec<PtProp>> for PtMutate {
+    fn mutate<Source: Retrieve<RlData>>(self: &mut Self, src: &Source, out: &mut Vec<PtProp>, change: &MutateInfo) -> MutateInfo {
+        if let MutateInfo::Change(changes) = change {
             for change in changes {
-                if let Change::Add(access) = change {
-                    let out_pts = gen_ptprops_iter(raw.get(access).into_iter(), self.scale);
+                if let Mutation::Add(access) = change {
+                    let out_pts = gen_ptprops_iter(src.get(access).into_iter(), self.scale);
                     out.extend(out_pts);
                 }
             }
-            ChangeDescrip::Change(changes.clone())
+            MutateInfo::Change(changes.clone())
         } else {
-            ChangeDescrip::None
+            MutateInfo::None
         }
     }
 }
@@ -35,10 +35,10 @@ impl PtNotify {
     }
 }
 impl NotifyHook for PtNotify {
-    fn notify(self: &mut Self, change: &ChangeDescrip) {
-        if let ChangeDescrip::Change(changes) = change {
+    fn notify(self: &mut Self, change: &MutateInfo) {
+        if let MutateInfo::Change(changes) = change {
             for change in changes {
-                if let Change::Add(access) = change {
+                if let Mutation::Add(access) = change {
                     notify_new_data("pt_update", access.to_indices(), &self.window);
                 }
             }

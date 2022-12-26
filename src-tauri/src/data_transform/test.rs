@@ -13,7 +13,7 @@ struct DFT {
     planner: FftPlanner<f32>
 }
 impl Mutator<RawIn, Vec<DFTOut>> for DFT {
-    fn mutate<Source: Retrieve<RawIn>>(self: &mut Self, src: &Source, out: &mut Vec<DFTOut>, change: &MutateInfo) -> MutateInfo {
+    fn mutate<Source: Retrieve<RawIn>>(self: &mut Self, src: &Source, out: &mut Vec<DFTOut>, _change: &MutateInfo) -> MutateInfo {
         let full_access = Accessor::Range((0, src.len()));
         let mut buf: Vec<DFTOut> = src.get(&full_access).iter().map(|entry| Complex::new(entry.to_owned(), 0.0)).collect();
         
@@ -41,14 +41,12 @@ fn dft_full_no_notify() {
             (*m as f32) * (2.0 * PI * f.to_owned() as f32 * t).cos())
                 .fold(0.0, |acc, entry| acc + entry)
     );
-    // keep
     let mut time_dom = Identity::new(vec![] as Vec<f32>);
     let add_1 = time_dom.add(real_1.clone());
     transform.mutate(&time_dom, &add_1);
 
     // assertions woo
     let full_access = Accessor::Range((0, transform.len()));
-    // println!("len: {}", out.len());
     let out_it = transform.get(&full_access);
     // find maximum magnitudes
     let mut max: Vec<(usize, (f32, Complex<f32>))> = out_it.iter().map(|comp| ((comp.re.pow(2) as f32 + comp.im.pow(2) as f32).pow(0.5), *comp))
@@ -110,30 +108,6 @@ impl Mutator<f32, Vec<f32>> for Scaler {
         }
         change.clone()
     }
-//     fn change<StoreOut: Retrieve<RawOut>>(self: &mut Self, raw: &StoreOut, out: &mut Vec<RawOut>, change: &super::mutate_info::ChangeDescrip) -> ChangeDescrip {
-//         match change {
-//             ChangeDescrip::Reset => {
-//                 out.clear();
-//             },
-//             ChangeDescrip::Change(changes) => {
-//                 changes.iter().for_each(|change| {
-//                     match change {
-//                         Change::Add(accessor) => {
-//                             out.extend(raw.get(&accessor).iter().map(|entry| entry * self.scale));
-//                         },
-//                         Change::Remove(accessor) => {
-//                             accessor.to_indices().for_each(|index| {
-//                                 out.remove(index);
-//                             });
-//                         },
-//                         _ => {}
-//                     }
-//                 });
-//             }
-//             _ => {}
-//         }
-//         change.clone()
-//     }
 }
 
 #[test]
