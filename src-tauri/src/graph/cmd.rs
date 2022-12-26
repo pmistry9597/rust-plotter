@@ -4,10 +4,10 @@ use futures::lock::Mutex;
 use tauri::State;
 
 use crate::data_transform::{Retrieve, mutate_info::Accessor};
-use super::{GraphData, types::{PtProp, CylProp}};
+use super::{types::{PtProp, CylProp}, graph_1d::GraphData1d};
 
 #[tauri::command]
-pub fn get_ptprop(i: i32, graph_state: State<Arc<Mutex<GraphData>>>) -> PtProp {
+pub fn get_ptprop(i: i32, graph_state: State<Arc<Mutex<GraphData1d>>>) -> PtProp {
     tauri::async_runtime::block_on(async {
         let i: usize = i.try_into().unwrap();
         let access = Accessor::Indices(vec![i]);
@@ -17,7 +17,7 @@ pub fn get_ptprop(i: i32, graph_state: State<Arc<Mutex<GraphData>>>) -> PtProp {
     })
 }
 #[tauri::command]
-pub fn get_cylprop(i: i32, graph_state: State<Arc<Mutex<GraphData>>>) -> CylProp {
+pub fn get_cylprop(i: i32, graph_state: State<Arc<Mutex<GraphData1d>>>) -> CylProp {
     tauri::async_runtime::block_on(async {
         let i: usize = i.try_into().unwrap();
         let access = Accessor::Indices(vec![i]);
