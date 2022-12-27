@@ -25,7 +25,7 @@ pub struct PtProp {
 #[derive(Serialize, Clone)]
 pub struct MeshProp {
     pub buffer_geom: BufferGeom,
-    pub colour: &'static str,
+    pub colour: Vec3,
 }
 
 #[derive(Serialize, Clone)]

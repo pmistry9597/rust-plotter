@@ -1,8 +1,7 @@
 use std::sync::Arc;
-
 use futures::{lock::Mutex, Future};
 use tauri::{Window, AppHandle, Manager};
-use crate::data_transform::{Identity, VecTransform, Transform, NotifyHook, mutate_info::{MutateInfo, Mutation, Accessor}};
+use crate::data_transform::{Identity, VecTransform, Transform, NotifyHook};
 use super::{types::{RlPointSlice, PtProp, MeshProp, Vec3}, pts::{PtMeshMutate, PtNotify}, mesh::{MeshMutate, MeshNotify}};
 
 pub async fn src_worker_mesh<F>(app: AppHandle, get_rl: impl Fn() -> F)
@@ -18,7 +17,7 @@ where
 
         let slice = data_op.expect("you're in a bit of a pickle here");
 
-        // // feeding and fooding
+        // feeding and fooding
         let graph = graph_state.lock().await;
         let rl_descrip = graph.srcs.lock().await.add(vec![slice].into_iter());
         let srcs = graph.srcs.lock().await;

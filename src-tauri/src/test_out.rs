@@ -18,16 +18,14 @@ pub async fn shit_data_mesh(raw_in: async_runtime::Sender<RlPointSlice>) {
       let mut count_gen: StdRng = rand::SeedableRng::from_entropy();
       let slice_count = count_gen.gen_range(1..4);
       let slice_z_pos = (0..slice_count).map(|i| (i as f32 / slice_count as f32) * width_wise_bound);
-      let slice_z = slice_z_pos.clone().chain(slice_z_pos.map(|z| -z));
+      let slice_z = slice_z_pos.clone().rev().chain(slice_z_pos.map(|z| -z));
+
       let mut noise_gen: StdRng = rand::SeedableRng::from_entropy();
       let pts_slice = slice_z.map(|z| {
         let x = x + noise_gen.gen::<f32>();
         let z = z + noise_gen.gen::<f32>();
         [x, fn_y(x,z), z]
       });
-      // let pts_slice = pts_slice.map(|[x, y, z]| {
-      //   [x + noise_gen.gen::<f32>() * 0.0, y + noise_gen.gen::<f32>() * 0.0, z + 0.0 * noise_gen.gen::<f32>()]
-      // });
       let rl_point_slice = RlPointSlice{
         pts: pts_slice.map(|pos| RlData{pos}).collect()
       };
