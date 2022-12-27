@@ -11,7 +11,7 @@ use graph::{types::{RlDataOpChunk, RlPointSlice}, graph_1d::{GraphData1d, src_wo
 use tauri::{async_runtime, Manager, generate_handler};
 use task_start::{ready, Task, generate_tasklist};
 
-use crate::graph::cmd::{get_ptprop_1d, get_cylprop_1d, get_ptprop_mesh};
+use crate::graph::cmd::{get_ptprop_1d, get_cylprop_1d, get_ptprop_mesh, get_meshprop};
 
 fn main() {
   let buf_size: usize = 7;
@@ -66,7 +66,7 @@ fn main() {
       get_ptprop_1d,
       get_cylprop_1d,
       get_ptprop_mesh,
-      // here goes mesh funcitno uwu
+      get_meshprop,
       ready,
     ])
     .run(tauri::generate_context!())

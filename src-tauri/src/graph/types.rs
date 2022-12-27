@@ -31,12 +31,11 @@ pub struct MeshProp {
 #[derive(Serialize, Clone)]
 pub struct BufferGeom {
     pub position: BufferAttrib<f32>,
-    pub index: BufferAttrib<f32>,
+    pub index: BufferAttrib<usize>,
 }
 
 #[derive(Serialize, Clone)]
 pub struct BufferAttrib<T> {
-    // pub attach: &'static str,
     pub array: Vec<T>,
     pub item_size: usize,
 }

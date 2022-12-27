@@ -5,7 +5,7 @@ use tauri::async_runtime;
 use crate::graph::types::{RlDataOpChunk, Vec2, RlData, RlPointSlice};
 
 pub async fn shit_data_mesh(raw_in: async_runtime::Sender<RlPointSlice>) {
-  let width_wise_bound = 20.0 as f32;
+  let width_wise_bound = 10.0 as f32;
   let (count, interv) = gen_graph_param(5.0, (0.0, 40.0));
 
   let mut x_pts_it = (0..count as i32).map(|i| (i as f32) * interv);
@@ -16,7 +16,7 @@ pub async fn shit_data_mesh(raw_in: async_runtime::Sender<RlPointSlice>) {
   loop {
     let valid_slice = x_pts_it.next().and_then(|x| {
       let mut count_gen: StdRng = rand::SeedableRng::from_entropy();
-      let slice_count = count_gen.gen_range(0..10);
+      let slice_count = count_gen.gen_range(1..4);
       let slice_z_pos = (0..slice_count).map(|i| (i as f32 / slice_count as f32) * width_wise_bound);
       let slice_z = slice_z_pos.clone().chain(slice_z_pos.map(|z| -z));
       let mut noise_gen: StdRng = rand::SeedableRng::from_entropy();

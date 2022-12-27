@@ -5,7 +5,7 @@ import { Vec3Fixed, Vec2Fixed, PolarCoord3D } from "../model/three-helpers";
 import { PerspectiveCamera } from "@react-three/drei";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
-import { BlckInfo, CylProp, PtProp } from "../model/backend-comm";
+import { BlckInfo, CylProp, MeshProp, PtProp } from "../model/backend-comm";
 import { rerender_updated } from "./rendering";
 import { AxesElem } from "./elems";
 import { ControlHandlers } from "../model/control-handlers";
@@ -19,6 +19,7 @@ export function Chart3d(props: {
     const [ptprops, setptprops] = useState([] as PtProp[])
     const [cyls, setcyls] = useState([] as CylProp[])
     const [camRef, setCamRef] = useState<React.MutableRefObject<THREE.PerspectiveCamera | null> | null>(null)
+    const [meshprops, setmeshprops] = useState([] as MeshProp[])
 
     const setCamRefHandle = useMemo(() => {
         return (camRef: React.MutableRefObject<THREE.PerspectiveCamera | null>) => setCamRef(camRef)
@@ -31,9 +32,6 @@ export function Chart3d(props: {
 
     // garbage section for mesh test garbage
     const verts = new Float32Array([
-        // 5, 0, 0,
-        // 5, 1, 5,
-        // 0, 10, -5,
         -10, 6, 4,
         0, -5, 4,
         -1, 5, -1,
@@ -72,9 +70,10 @@ export function Chart3d(props: {
                     cam_focus={cam_focus}
                     ptprops={ptprops} />
                 <BackendEndpoint
-                        settrig={settrig} 
-                        setptprops={setptprops} 
-                        setcyls={setcyls}
+                    setmeshprops={setmeshprops}
+                    settrig={settrig} 
+                    setptprops={setptprops} 
+                    setcyls={setcyls}
                     />
                 <ThreejsFix />
                 <CamTrack 
@@ -87,9 +86,10 @@ export function Chart3d(props: {
                     rad={0.1} 
                     arrowDim={{wd: 0.2, hght: 0.4}} 
                 />
-                <Graph1D
+                <Graph
                     trig={trig} 
                     settrig={settrig} 
+                    meshprops={meshprops}
                     ptprops={ptprops} 
                     setptprops={setptprops} 
                     cyls={cyls}
@@ -228,9 +228,12 @@ function BackendEndpoint(props: {
     settrig: any,
     setptprops: any,
     setcyls: any,
+    setmeshprops: any,
 }) 
 {
-    const { setptprops, setcyls } = props
+    const { setptprops, setcyls, setmeshprops } = props
+    const mesh_ref = useRef([] as MeshProp[])
+    setmeshprops(mesh_ref.current)
     const ptprops_ref = useRef([] as PtProp[])
     setptprops(ptprops_ref.current)
     const cyles_ref = useRef([] as CylProp[])
@@ -254,6 +257,21 @@ function BackendEndpoint(props: {
             invoke("get_ptprop_mesh", {i}).then((ptprop_val) => {
                 const ptprop = ptprop_val as PtProp
                 ptprops_ref.current.push(ptprop)
+                props.settrig(true)
+            }).catch((reason) => {
+                console.log("huh retrieving didn't work when sent?: ",  reason)
+            })
+        })
+        listen("mesh_update", (event: any) => {
+            const payload: BlckInfo = event.payload
+            const i = payload.index
+            invoke("get_meshprop", {i}).then((meshprop_val) => {
+                const meshprop = meshprop_val as MeshProp
+                meshprop.buffer_geom.position.array = 
+                    new Float32Array(meshprop.buffer_geom.position.array)
+                meshprop.buffer_geom.index.array = 
+                    new Uint32Array(meshprop.buffer_geom.index.array)
+                mesh_ref.current.push(meshprop)
                 props.settrig(true)
             }).catch((reason) => {
                 console.log("huh retrieving didn't work when sent?: ",  reason)
@@ -322,9 +340,10 @@ function Point(props: {ptprop_w_index: [PtProp, number],
     )
 }
 
-function Graph1D(props: {
+function Graph(props: {
     trig: boolean, 
     settrig: any, 
+    meshprops: MeshProp[],
     ptprops: PtProp[], 
     setptprops: any, 
     cyls: CylProp[],
@@ -380,11 +399,42 @@ function Graph1D(props: {
             </group>
         )
     }, [])
+    const meshRender = useRef([] as JSX.Element[])
+    const mesh_props_hash = useRef([] as (string | Int32Array)[])
+    const mesh_gener = useMemo(() => (meshprop_w_index: [MeshProp, number]) => {
+        const [mesh_prop, index] = meshprop_w_index
+        const pos_attrib = mesh_prop.buffer_geom.position
+        const index_attrib = mesh_prop.buffer_geom.index
+        return (
+            <mesh castShadow key={index} position={[0,0,0]}>
+                <bufferGeometry>
+                    <bufferAttribute 
+                        attach="attributes-position"
+                        array={pos_attrib.array}
+                        count={pos_attrib.array.length / pos_attrib.item_size}
+                        itemSize={pos_attrib.item_size}
+                    />
+                    <bufferAttribute
+                        attach="index"
+                        array={index_attrib.array}
+                        count={index_attrib.array.length / index_attrib.item_size}
+                        itemSize={index_attrib.item_size}
+                    />
+                </bufferGeometry>
+                <meshBasicMaterial 
+                        color={new THREE.Color(1,0,0)} 
+                        side={THREE.DoubleSide}
+                    />
+            </mesh>
+        )
+    }, [])
     useEffect(() => {
         const ptprops = props.ptprops
         rerender_updated(ptprops, pt_props_hash, pt_gener, ptRender.current)
         const cylprops = props.cyls
         rerender_updated(cylprops, cyl_props_hash, cyl_gener, cylRender.current)
+        const meshprops = props.meshprops
+        rerender_updated(meshprops, mesh_props_hash, mesh_gener, meshRender.current)
 
         props.settrig(false)
     }, [props.trig])
@@ -393,6 +443,7 @@ function Graph1D(props: {
         <group>
             <group>{ptRender.current}</group>
             <group>{cylRender.current}</group>
+            <group>{meshRender.current}</group>
         </group>
     )
 }

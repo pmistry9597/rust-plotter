@@ -16,3 +16,19 @@ export interface PtProp {
     pos: Vec3Fixed,
     rl_data: RlData,
 }
+export interface MeshProp {
+    buffer_geom: BufferGeom,
+    colour: string,
+}
+export interface BufferGeom {
+    position: BufferAttribf,
+    index: BufferAttribi,
+}
+export interface BufferAttribf {
+    array: Float32Array,
+    item_size: number,
+}
+export interface BufferAttribi {
+    array: Uint32Array,
+    item_size: number,
+}

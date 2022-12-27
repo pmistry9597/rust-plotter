@@ -24,16 +24,8 @@ where
         let srcs = graph.srcs.lock().await;
         let pts_descrip = graph.pts.lock().await.mutate(&srcs, &rl_descrip);
         graph.pt_notify.lock().await.notify(&pts_descrip);
-        // if let MutateInfo::Change(changes) = &pts_descrip {
-        //     if let Mutation::Add(access) = &changes[0] {
-        //         if let Accessor::Range((begin, end)) = access {
-        //             println!("here da rnage lul: {} {}", *begin, *end);
-        //         }
-        //     }
-        // }
-        // mesh process + notify here
-        // let cyl_descrip = graph.cyls.lock().await.mutate(&graph.pts.lock().await, &pts_descrip);
-        // graph.cyl_notify.lock().await.notify(&cyl_descrip);
+        let mesh_info = graph.mesh.lock().await.mutate(&graph.pts.lock().await, &pts_descrip);
+        graph.mesh_notify.lock().await.notify(&mesh_info);
     }
 }
 

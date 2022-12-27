@@ -9,6 +9,9 @@ impl MutateInfo {
     pub fn new_add(reach: usize, len: usize) -> Self {
         Self::Change(vec![Mutation::Add(Accessor::reverse_range(reach, len))])
     }
+    pub fn new_add_single(len: usize) -> Self {
+        Self::Change(vec![Mutation::Add(Accessor::single(len - 1))])
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -55,5 +58,8 @@ impl Accessor {
     }
     pub fn reverse_range(reach: usize, len: usize) -> Self {
         Accessor::Range((len - reach, len))
+    }
+    pub fn single(index: usize) -> Self {
+        Self::Indices(vec![index])
     }
 }
