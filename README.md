@@ -10,7 +10,7 @@ Gonna move on to projects I find more interesting :P.
 ![Sine with noise](/images/sine_noise.png)
 3D plot of decaying sinusoid
 ![Decaying expo 3d](/images/decaying_expo.png)
-3D surface plotting attempt (around the time I gave up, ofcourse)
+3D surface plotting attempt (around the time I gave up, of course)
 ![Mesh attempt](/images/mesh_attempt.png)
 
 ## Why this thing failed
