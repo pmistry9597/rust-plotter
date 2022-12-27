@@ -1,6 +1,21 @@
 # Rustilloscope
 
-An app intended for waveform and music analysis and visualization. Powered by [Tauri](https://github.com/tauri-apps) (in Rust + JS). JS UI uses React with [@react-three/fiber](https://github.com/pmndrs/react-three-fiber).
+An app that was *originally* intended for waveform analysis and visualization. Actually, this was meant to be a project to get me deeper into rust. Well, I think it succeeded at that one. Now I am just going to brand this as an attempt to do 3D graphing. Powered by [Tauri](https://github.com/tauri-apps) (in Rust + JS). JS UI uses React with [@react-three/fiber](https://github.com/pmndrs/react-three-fiber).
+
+Gonna move on to projects I find more interesting :P.
+
+## What I managed to do
+
+![Sine with noise](/images/sine_noise.png)
+![Decaying expo 3d](/images/decaying_expo.png)
+![Mesh attempt](/images/mesh_attempt.png)
+
+## Why this thing failed
+This was meant to be something smaller so I can move on to other things. Yet, I kept thinking of new features that may be useful to have. Got to love scope creep, eh?
+
+In addition, major design flaw I made was choosing to use the Tauri frontend to render the actual display. I should have switched to a different option once I realized Tauri could not stream a render from rust directly, which meant I would have to render within the browser client provided by Tauri *vomit*.
+
+For instance, I could have used Tauri just for the UI, and then have used another library in parallel for actually rendering to a window.
 
 ## Build / Running
 
@@ -19,19 +34,3 @@ For an optimized binary, run the following one *after* the other.
 npm run build
 cargo tauri build
 ```
-
-## Plans
-
-- [ ] UI/Data visualizer
-    - [ ] basic components/UX
-    - [ ] charting
-- [ ] signal sources
-    - [ ] file formats
-    - [ ] audio devices
-- [ ] fourier analysis
-    - [ ] frequency domain over an interval
-    - [ ] freqencies present in sliding chunk
-
-### Future things?
-
-- pitch detection (seems kinda hard eh?)
