@@ -6,11 +6,11 @@ Gonna move on to projects I find more interesting :P.
 
 ## What I managed to do
 
-1D plotting a sine wave with noise\
+1D plotting a sine wave with noise
 ![Sine with noise](/images/sine_noise.png)
-3D plot of decaying sinusoid\
+3D plot of decaying sinusoid
 ![Decaying expo 3d](/images/decaying_expo.png)
-3D surface plotting attempt (around the time I gave up, ofcourse)\
+3D surface plotting attempt (around the time I gave up, ofcourse)
 ![Mesh attempt](/images/mesh_attempt.png)
 
 ## Why this thing failed
