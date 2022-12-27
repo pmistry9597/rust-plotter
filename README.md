@@ -16,7 +16,7 @@ Gonna move on to projects I find more interesting :P.
 ## Why this thing failed
 This was meant to be something smaller so I can move on to other things. Yet, I kept thinking of new features that may be useful to have. Got to love scope creep, eh?
 
-In addition, major design flaw I made was choosing to use the Tauri frontend to render the actual display. I should have switched to a different option once I realized Tauri could not stream a render from rust directly, which meant I would have to render within the browser client provided by Tauri (*vomit*).
+In addition, a major design flaw I made was choosing to use the Tauri frontend to render the actual display. I should have switched to a different option once I realized Tauri could not stream a render from rust directly. This meant I had to render within the browser client provided by Tauri (*vomit*).
 
 For instance, I could have used Tauri just for the UI, and then have used another library in parallel for actually rendering to a window.
 
