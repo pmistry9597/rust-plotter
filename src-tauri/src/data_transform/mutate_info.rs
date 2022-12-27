@@ -5,6 +5,12 @@ pub enum MutateInfo {
     Change(Vec<Mutation>),
 }
 
+impl MutateInfo {
+    pub fn new_add(reach: usize, len: usize) -> Self {
+        Self::Change(vec![Mutation::Add(Accessor::reverse_range(reach, len))])
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub enum Mutation {
     Add(Accessor),
@@ -46,5 +52,8 @@ impl Accessor {
             Accessor::Range((begin, end)) => *self = Accessor::Range(((*begin as i32 - by as i32).max(0).try_into().expect("you failed still loser"), *end)),
             Accessor::Indices(indices) => indices.insert(0, (indices[0] as i32 - by as i32).max(0).try_into().expect("you failed still again loser"))
         }
+    }
+    pub fn reverse_range(reach: usize, len: usize) -> Self {
+        Accessor::Range((len - reach, len))
     }
 }

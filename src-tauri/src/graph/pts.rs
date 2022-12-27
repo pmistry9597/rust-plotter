@@ -1,5 +1,5 @@
 use tauri::Window;
-use crate::{data_transform::{NotifyHook, Retrieve, mutate_info::{MutateInfo, Mutation}, mutator::Mutator}};
+use crate::{data_transform::{NotifyHook, Retrieve, mutate_info::{MutateInfo, Mutation, Accessor}, mutator::Mutator}};
 use super::{notify::notify_new_data, types::{PtProp, Vec3, RlData, RlPointSlice}, data_helpers::scale_vecn};
 
 pub struct PtMutate {
@@ -37,13 +37,16 @@ impl PtMeshMutate {
 impl Mutator<RlPointSlice, Vec<PtProp>> for PtMeshMutate {
     fn mutate<Source: Retrieve<RlPointSlice>>(self: &mut Self, src: &Source, out: &mut Vec<PtProp>, change: &MutateInfo) -> MutateInfo {
         if let MutateInfo::Change(changes) = change {
+            let mut len = 0;
             for change in changes {
                 if let Mutation::Add(access) = change {
-                    let out_pts = gen_ptprops_iter_slice(src.get(access).into_iter(), self.scale);
+                    let out_pts_it = gen_ptprops_iter_slice(src.get(access).into_iter(), self.scale);
+                    let out_pts: Vec<PtProp> = out_pts_it.collect();
+                    len += out_pts.len();
                     out.extend(out_pts);
                 }
             }
-            MutateInfo::Change(changes.clone())
+            MutateInfo::new_add(len, out.len())
         } else {
             MutateInfo::None
         }

@@ -17,13 +17,13 @@ where
         let graph_state = app.state::<Arc<Mutex<GraphDataMesh>>>();
 
         let slice = data_op.expect("you're in a bit of a pickle here");
-        println!("penile harrassment {}", slice.pts.len());
 
         // // feeding and fooding
         let graph = graph_state.lock().await;
         let rl_descrip = graph.srcs.lock().await.add(vec![slice].into_iter());
         let srcs = graph.srcs.lock().await;
         let pts_descrip = graph.pts.lock().await.mutate(&srcs, &rl_descrip);
+        graph.pt_notify.lock().await.notify(&pts_descrip);
         // if let MutateInfo::Change(changes) = &pts_descrip {
         //     if let Mutation::Add(access) = &changes[0] {
         //         if let Accessor::Range((begin, end)) = access {
@@ -31,7 +31,6 @@ where
         //         }
         //     }
         // }
-        graph.pt_notify.lock().await.notify(&pts_descrip);
         // mesh process + notify here
         // let cyl_descrip = graph.cyls.lock().await.mutate(&graph.pts.lock().await, &pts_descrip);
         // graph.cyl_notify.lock().await.notify(&cyl_descrip);
