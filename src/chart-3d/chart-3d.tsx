@@ -248,6 +248,17 @@ function BackendEndpoint(props: {
                 console.log("huh retrieving didn't work when sent?: ",  reason)
             })
         })
+        listen("pt_mesh_update", (event: any) => {
+            const payload: BlckInfo = event.payload
+            const i = payload.index
+            invoke("get_ptprop_mesh", {i}).then((ptprop_val) => {
+                const ptprop = ptprop_val as PtProp
+                ptprops_ref.current.push(ptprop)
+                props.settrig(true)
+            }).catch((reason) => {
+                console.log("huh retrieving didn't work when sent?: ",  reason)
+            })
+        })
         listen("cyl_update", (event: any) => {
             const payload: BlckInfo = event.payload
             const i = payload.index

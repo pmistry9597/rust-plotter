@@ -15,16 +15,35 @@ pub struct CylProp {
     pub len: f32,
 }
 
-#[derive(Debug, Serialize, Clone)]
-pub struct RlPointSlice {
-    pub pts: Vec<RlData>
-}
-
 // kinda like below but for mesh case
 #[derive(Serialize, Clone, Copy)]
 pub struct PtProp {
     pub pos: Vec3,
     pub rl_data: RlData,
+}
+
+#[derive(Serialize, Clone)]
+pub struct MeshProp {
+    pub buffer_geom: BufferGeom,
+    pub colour: &'static str,
+}
+
+#[derive(Serialize, Clone)]
+pub struct BufferGeom {
+    pub position: BufferAttrib<f32>,
+    pub index: BufferAttrib<f32>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct BufferAttrib<T> {
+    // pub attach: &'static str,
+    pub array: Vec<T>,
+    pub item_size: usize,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct RlPointSlice {
+    pub pts: Vec<RlData>
 }
 
 // contains source data (not the rendering sort)

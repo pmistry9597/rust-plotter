@@ -6,7 +6,7 @@ use crate::graph::types::{RlDataOpChunk, Vec2, RlData, RlPointSlice};
 
 pub async fn shit_data_mesh(raw_in: async_runtime::Sender<RlPointSlice>) {
   let width_wise_bound = 10.0 as f32;
-  let (count, interv) = gen_graph_param(20.0, (0.0, 10.0));
+  let (count, interv) = gen_graph_param(5.0, (0.0, 40.0));
 
   let mut x_pts_it = (0..count as i32).map(|i| (i as f32) * interv);
   let fn_y = |x: f32, z: f32| {
@@ -16,14 +16,18 @@ pub async fn shit_data_mesh(raw_in: async_runtime::Sender<RlPointSlice>) {
   loop {
     let valid_slice = x_pts_it.next().and_then(|x| {
       let mut count_gen: StdRng = rand::SeedableRng::from_entropy();
-      let slice_count = count_gen.gen_range(0..5);
-      let slice_z_pos = (0..slice_count).map(|i| i as f32 / width_wise_bound);
+      let slice_count = count_gen.gen_range(0..10);
+      let slice_z_pos = (0..slice_count).map(|i| (i as f32 / slice_count as f32) * width_wise_bound);
       let slice_z = slice_z_pos.clone().chain(slice_z_pos.map(|z| -z));
-      let pts_slice = slice_z.map(|z| [x, fn_y(x,z), z]);
       let mut noise_gen: StdRng = rand::SeedableRng::from_entropy();
-      let pts_slice = pts_slice.map(|[x, y, z]| {
-        [x + noise_gen.gen::<f32>(), y + noise_gen.gen::<f32>(), z + noise_gen.gen::<f32>()]
+      let pts_slice = slice_z.map(|z| {
+        let x = x + 0.0 * noise_gen.gen::<f32>();
+        let z = z + 0.0 * noise_gen.gen::<f32>();
+        [x, fn_y(x,z), z]
       });
+      // let pts_slice = pts_slice.map(|[x, y, z]| {
+      //   [x + noise_gen.gen::<f32>() * 0.0, y + noise_gen.gen::<f32>() * 0.0, z + 0.0 * noise_gen.gen::<f32>()]
+      // });
       let rl_point_slice = RlPointSlice{
         pts: pts_slice.map(|pos| RlData{pos}).collect()
       };
